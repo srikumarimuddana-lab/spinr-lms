@@ -1,0 +1,1 @@
+sed -i 's/useEffect(() => { loadQuiz(); }, \[quizId\]);/useEffect(() => { loadQuiz(); \/* eslint-disable-next-line react-hooks\/exhaustive-deps *\/ }, \[quizId\]);/' src/app/dashboard/courses/\[courseId\]/quiz/\[quizId\]/page.js

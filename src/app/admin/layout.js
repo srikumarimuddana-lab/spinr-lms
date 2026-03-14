@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, BookOpen, Users, FileCheck, ArrowLeft, LogOut } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, FileCheck, ArrowLeft, LogOut, Mail } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [lmsUser, setLmsUser] = useState(null);
@@ -39,6 +39,7 @@ export default function AdminLayout({ children }) {
         { name: 'Courses', href: '/admin/courses', icon: BookOpen },
         { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'Compliance', href: '/admin/compliance', icon: FileCheck },
+        { name: 'Email', href: '/admin/emails', icon: Mail },
     ];
 
     const isActive = (href) => pathname === href || (href !== '/admin' && pathname.startsWith(href));

@@ -626,3 +626,42 @@ INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order) VALU
   ('33333333-3333-3333-3333-333333333310', 'Above 3.5 stars', false, 2),
   ('33333333-3333-3333-3333-333333333310', 'Above 4.7 stars', true, 3),
   ('33333333-3333-3333-3333-333333333310', 'Above 4.9 stars', false, 4);
+
+-- Question 11
+INSERT INTO quiz_questions (id, quiz_id, question_text, sort_order) VALUES (
+  '33333333-3333-3333-3333-333333333311',
+  '22222222-2222-2222-2222-222222222201',
+  'Where must you park your car while waiting for an airport pickup request?',
+  11
+);
+INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order) VALUES
+  ('33333333-3333-3333-3333-333333333311', 'At the terminal curbside', false, 1),
+  ('33333333-3333-3333-3333-333333333311', 'In the designated Rideshare/TNC Staging Area', true, 2),
+  ('33333333-3333-3333-3333-333333333311', 'In the short-term public parking lot', false, 3),
+  ('33333333-3333-3333-3333-333333333311', 'Anywhere along the airport entrance road', false, 4);
+
+-- Question 12
+INSERT INTO quiz_questions (id, quiz_id, question_text, sort_order) VALUES (
+  '33333333-3333-3333-3333-333333333312',
+  '22222222-2222-2222-2222-222222222201',
+  'Where are you allowed to pick up a customer at the airport?',
+  12
+);
+INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order) VALUES
+  ('33333333-3333-3333-3333-333333333312', 'At any door where the rider is standing', false, 1),
+  ('33333333-3333-3333-3333-333333333312', 'At the designated Rideshare/TNC Pickup Zone only', true, 2),
+  ('33333333-3333-3333-3333-333333333312', 'At the departures drop-off area', false, 3),
+  ('33333333-3333-3333-3333-333333333312', 'In the rental car parking lot', false, 4);
+
+-- Question 13
+INSERT INTO quiz_questions (id, quiz_id, question_text, sort_order) VALUES (
+  '33333333-3333-3333-3333-333333333313',
+  '22222222-2222-2222-2222-222222222201',
+  'What is the fine amount associated with violating airport parking and pickup rules?',
+  13
+);
+INSERT INTO quiz_options (question_id, option_text, is_correct, sort_order) VALUES
+  ('33333333-3333-3333-3333-333333333313', '$100', false, 1),
+  ('33333333-3333-3333-3333-333333333313', '$250', false, 2),
+  ('33333333-3333-3333-3333-333333333313', '$350', true, 3),
+  ('33333333-3333-3333-3333-333333333313', '$500', false, 4);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle, Circle, BookOpen, ClipboardList, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Circle, BookOpen, ClipboardList, ArrowLeft, Lock } from 'lucide-react';
 
 export default function CourseDetailPage() {
     const { courseId } = useParams();
@@ -47,6 +47,7 @@ export default function CourseDetailPage() {
 
     const completedLessons = lessons.filter((l) => isLessonComplete(l.id)).length;
     const nextLesson = lessons.find((l) => !isLessonComplete(l.id));
+    const allLessonsComplete = lessons.length > 0 && lessons.every((l) => isLessonComplete(l.id));
 
     if (loading) {
         return (
@@ -131,6 +132,23 @@ export default function CourseDetailPage() {
                         {quizzes.map((quiz) => {
                             const bestScore = getBestQuizScore(quiz.id);
                             const passed = hasPassedQuiz(quiz.id);
+
+                            // If lessons are not complete, show disabled quiz card
+                            if (!allLessonsComplete) {
+                                return (
+                                    <div
+                                        key={quiz.id}
+                                        className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl p-4 shadow-sm opacity-60"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <Lock className="w-5 h-5 shrink-0 text-gray-400" />
+                                            <p className="text-sm font-medium truncate">{quiz.title}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-500 shrink-0">Complete lessons first</span>
+                                    </div>
+                                );
+                            }
+
                             return (
                                 <Link
                                     key={quiz.id}

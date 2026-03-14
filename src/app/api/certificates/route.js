@@ -19,6 +19,25 @@ export async function POST(request) {
         const allPassed = quizzes.every((quiz) => attempts?.some((a) => a.quiz_id === quiz.id && a.passed));
         if (!allPassed) return NextResponse.json({ message: 'Not all quizzes passed yet' });
 
+        // CRITICAL: Verify all lessons are completed before issuing certificate
+        const { data: lessons } = await serviceClient.from('lessons').select('id').eq('course_id', courseId);
+        if (!lessons || lessons.length === 0) return NextResponse.json({ message: 'No lessons in course' });
+
+        // Check lesson progress for all lessons in the course
+        const { data: progress } = await serviceClient.from('lesson_progress')
+            .select('lesson_id, completed')
+            .eq('user_id', user.id)
+            .in('lesson_id', lessons.map((l) => l.id));
+
+        // Verify all lessons are completed
+        const allLessonsComplete = lessons.every((lesson) =>
+            progress?.some((p) => p.lesson_id === lesson.id && p.completed)
+        );
+        if (!allLessonsComplete) return NextResponse.json({
+            message: 'Complete all lessons before earning the certificate',
+            error: 'lessons_not_completed'
+        });
+
         // Check if certificate already exists
         const { data: existing } = await serviceClient.from('training_certificates').select('id').eq('user_id', user.id).eq('course_id', courseId).maybeSingle();
         if (existing) return NextResponse.json({ message: 'Certificate already issued' });

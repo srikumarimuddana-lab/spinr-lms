@@ -18,7 +18,7 @@ export default function QuizPage() {
     const [submitting, setSubmitting] = useState(false);
     const supabase = createClient();
 
-    useEffect(() => { loadQuiz(); }, [quizId]);
+    useEffect(() => { loadQuiz(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [quizId]);
 
     async function loadQuiz() {
         const { data: quizData } = await supabase.from('quizzes').select('*').eq('id', quizId).single();
@@ -29,7 +29,10 @@ export default function QuizPage() {
             .order('sort_order');
 
         setQuiz(quizData);
-        setQuestions(questionsData || []);
+        // Randomize questions and select up to 10
+        const shuffledQuestions = questionsData?.sort(() => 0.5 - Math.random());
+        const selectedQuestions = shuffledQuestions?.slice(0, 10);
+        setQuestions(selectedQuestions || []);
         setLoading(false);
     }
 

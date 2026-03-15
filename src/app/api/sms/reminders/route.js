@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendSMSWithRetry } from '@/lib/twilio-client';
+import { sendSMSWithRetry, checkOptOutStatus } from '@/lib/twilio-client';
 
 const DEFAULT_MESSAGE = `🚗 Hey! Complete your Spinr driver registration in 2 mins and start earning. 
 Open the app: https://spinr.ca/signup?ref=sms 
@@ -37,6 +37,7 @@ export async function POST(request) {
 
         let sentCount = 0;
         let failedCount = 0;
+        let skippedCount = 0;
         const results = [];
 
         // Twilio rate limit: ~100 messages/second for standard accounts
@@ -47,6 +48,23 @@ export async function POST(request) {
             const phone = cleanPhones[i];
 
             try {
+                // Check if user has opted out before attempting to send
+                const optOutStatus = await checkOptOutStatus(phone);
+                if (optOutStatus.isOptedOut) {
+                    console.log(`Skipping SMS to ${phone} - user has opted out`);
+                    // Log the skipped message
+                    await supabase.from('sms_log').insert({
+                        phone: phone,
+                        message: smsMessage,
+                        status: 'skipped',
+                        processed_as: 'opted_out',
+                        optout_at: optOutStatus.optedOutAt,
+                    });
+                    skippedCount++;
+                    results.push({ phone, status: 'skipped', reason: 'opted_out' });
+                    continue;
+                }
+
                 // Insert pending record first
                 const { data: logEntry, error: insertError } = await supabase
                     .from('sms_log')
@@ -109,8 +127,9 @@ export async function POST(request) {
             success: true,
             sentCount,
             failedCount,
+            skippedCount,
             total: cleanPhones.length,
-            message: `Sent SMS to ${sentCount} users${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+            message: `Sent SMS to ${sentCount} users${failedCount > 0 ? ` (${failedCount} failed)` : ''}${skippedCount > 0 ? ` (${skippedCount} skipped - opted out)` : ''}`,
             results,
         });
 

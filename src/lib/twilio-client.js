@@ -81,3 +81,39 @@ export async function sendSMSWithRetry(to, message, maxRetries = 3) {
 }
 
 export default { sendSMS, sendSMSWithRetry };
+
+/**
+ * Check if a phone number has opted out of SMS
+ * @param {string} phone - Phone number to check (E.164 format)
+ * @returns {Promise<{isOptedOut: boolean, optedOutAt?: string}>}
+ */
+export async function checkOptOutStatus(phone) {
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    // Format phone number consistently
+    let formattedPhone = phone.trim();
+    if (!formattedPhone.startsWith('+')) {
+        formattedPhone = '+1' + formattedPhone.replace(/\D/g, '');
+    }
+
+    const { data, error } = await supabase
+        .from('sms_optout')
+        .select('opted_out_at, is_active')
+        .eq('phone', formattedPhone)
+        .eq('is_active', true)
+        .single();
+
+    if (error || !data) {
+        // No opt-out record found - not opted out
+        return { isOptedOut: false };
+    }
+
+    return {
+        isOptedOut: true,
+        optedOutAt: data.opted_out_at
+    };
+}

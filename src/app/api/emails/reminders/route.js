@@ -3,6 +3,9 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Delay helper to respect rate limits (Resend allows ~10 requests/second on free tier)
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function POST(request) {
     try {
         const { userIds, courseId, customMessage } = await request.json();
@@ -60,23 +63,39 @@ export async function POST(request) {
             </div>
         `;
 
-        // Send individual emails to each recipient
+        // Send individual emails with delay to respect rate limits
         let sentCount = 0;
         let failedCount = 0;
 
-        for (const email of emails) {
-            const { error } = await resend.emails.send({
-                from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
-                to: [email], // Individual email to each recipient
-                subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
-                html: htmlBody,
-            });
+        // Resend free tier: 100 emails/day, ~10 emails/second rate
+        // Add 150ms delay between each email to stay under limit
+        const EMAIL_DELAY_MS = 150;
 
-            if (error) {
-                console.error('Resend error for', email, ':', error);
+        for (let i = 0; i < emails.length; i++) {
+            const email = emails[i];
+
+            try {
+                const { error } = await resend.emails.send({
+                    from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
+                    to: [email],
+                    subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
+                    html: htmlBody,
+                });
+
+                if (error) {
+                    console.error('Resend error for', email, ':', error);
+                    failedCount++;
+                } else {
+                    sentCount++;
+                }
+            } catch (err) {
+                console.error('Exception sending to', email, ':', err);
                 failedCount++;
-            } else {
-                sentCount++;
+            }
+
+            // Add delay between emails (except after the last one)
+            if (i < emails.length - 1) {
+                await delay(EMAIL_DELAY_MS);
             }
         }
 
@@ -84,7 +103,8 @@ export async function POST(request) {
             success: true,
             sentCount,
             failedCount,
-            message: `Sent reminder emails to ${sentCount} users`
+            total: emails.length,
+            message: `Sent reminder emails to ${sentCount} users${failedCount > 0 ? ` (${failedCount} failed)` : ''}`
         });
 
     } catch (error) {

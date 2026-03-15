@@ -60,26 +60,23 @@ export async function POST(request) {
             </div>
         `;
 
-        // Send emails in batches
-        const batchSize = 100;
+        // Send individual emails to each recipient
         let sentCount = 0;
         let failedCount = 0;
 
-        for (let i = 0; i < emails.length; i += batchSize) {
-            const batch = emails.slice(i, i + batchSize);
-
+        for (const email of emails) {
             const { error } = await resend.emails.send({
                 from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
-                to: batch,
+                to: [email], // Individual email to each recipient
                 subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
                 html: htmlBody,
             });
 
             if (error) {
-                console.error('Resend error:', error);
-                failedCount += batch.length;
+                console.error('Resend error for', email, ':', error);
+                failedCount++;
             } else {
-                sentCount += batch.length;
+                sentCount++;
             }
         }
 

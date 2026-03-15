@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { toast } from 'sonner';
-import { Mail, Send, Users, UserPlus, Clock, CheckCircle, Loader2, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Mail, Send, Users, UserPlus, Clock, CheckCircle, Loader2, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Download, FileSpreadsheet } from 'lucide-react';
 
 function RichTextEditor({ value, onChange, placeholder }) {
     const editorRef = useRef(null);
@@ -129,6 +129,10 @@ export default function AdminEmailsPage() {
     const [inviteCourse, setInviteCourse] = useState('');
     const [inviteMessage, setInviteMessage] = useState('');
 
+    // Export state
+    const [exportFilter, setExportFilter] = useState('all');
+    const [exporting, setExporting] = useState(false);
+
     const supabase = createClient();
 
     useEffect(() => {
@@ -168,6 +172,85 @@ export default function AdminEmailsPage() {
 
         setPendingUsers(Array.from(pendingMap.values()));
         setLoading(false);
+    }
+
+    async function exportUsers() {
+        setExporting(true);
+        try {
+            // Get all users with their enrollments and certificates
+            const [enrollmentsRes, certificatesRes, usersRes] = await Promise.all([
+                supabase.from('enrollments').select('*, courses(title)'),
+                supabase.from('training_certificates').select('*'),
+                supabase.from('lms_users').select('id, email, full_name, role, created_at').eq('role', 'driver'),
+            ]);
+
+            const users = usersRes.data || [];
+            const enrollments = enrollmentsRes.data || [];
+            const certificates = certificatesRes.data || [];
+
+            // Build user data with completion status
+            const userData = users.map(user => {
+                const userEnrollments = enrollments.filter(e => e.user_id === user.id);
+                const userCerts = certificates.filter(c => c.user_id === user.id);
+
+                const hasCompletedCourse = userEnrollments.some(e => e.status === 'completed');
+                const hasCertificate = userCerts.length > 0;
+                const isCompleted = hasCompletedCourse || hasCertificate;
+
+                // Get course details
+                const coursesList = userEnrollments.map(e => e.courses?.title || 'Unknown').join(', ');
+                const progressList = userEnrollments.map(e => `${e.courses?.title || 'Unknown'}: ${Math.round(e.progress || 0)}%`).join('; ');
+
+                return {
+                    'Full Name': user.full_name,
+                    'Email': user.email,
+                    'Status': isCompleted ? 'Completed' : 'Not Completed',
+                    'Courses': coursesList || 'None',
+                    'Progress': progressList || 'N/A',
+                    'Certificates': userCerts.map(c => c.certificate_number).join(', ') || 'None',
+                    'Joined Date': new Date(user.created_at).toLocaleDateString(),
+                };
+            });
+
+            // Filter based on selection
+            let filteredData = userData;
+            if (exportFilter === 'completed') {
+                filteredData = userData.filter(u => u.Status === 'Completed');
+            } else if (exportFilter === 'not_completed') {
+                filteredData = userData.filter(u => u.Status === 'Not Completed');
+            }
+
+            // Convert to CSV
+            const headers = Object.keys(filteredData[0] || {});
+            const csvContent = [
+                headers.join(','),
+                ...filteredData.map(row =>
+                    headers.map(header => {
+                        const value = row[header] || '';
+                        // Escape quotes and wrap in quotes if contains comma
+                        const escaped = value.replace(/"/g, '""');
+                        return escaped.includes(',') ? `"${escaped}"` : escaped;
+                    }).join(',')
+                )
+            ].join('\n');
+
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `user_list_${exportFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast.success(`Exported ${filteredData.length} users`);
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Failed to export users');
+        }
+        setExporting(false);
     }
 
     async function sendPromotionalEmail() {
@@ -318,6 +401,7 @@ export default function AdminEmailsPage() {
         { id: 'promotional', label: 'Promotional', icon: Mail },
         { id: 'reminders', label: 'Reminders', icon: Clock },
         { id: 'invitations', label: 'Invitations', icon: UserPlus },
+        { id: 'export', label: 'Export Users', icon: Download },
     ];
 
     return (
@@ -638,6 +722,76 @@ export default function AdminEmailsPage() {
                         >
                             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                             Send Invitations
+                        </button>
+                    </div>
+                )}
+
+                {/* Export Tab */}
+                {activeTab === 'export' && (
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-semibold mb-1">Export User List</h3>
+                            <p className="text-sm text-[hsl(var(--muted-foreground))]">Download user data with their training completion status</p>
+                        </div>
+
+                        <div className="grid sm:grid-cols-3 gap-4">
+                            <button
+                                onClick={() => setExportFilter('all')}
+                                className={`p-4 rounded-xl border-2 transition-colors ${exportFilter === 'all'
+                                        ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5'
+                                        : 'border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]/50'
+                                    }`}
+                            >
+                                <FileSpreadsheet className="w-8 h-8 mx-auto mb-2 text-[hsl(var(--primary))]" />
+                                <p className="font-medium text-center">All Users</p>
+                                <p className="text-xs text-[hsl(var(--muted-foreground))] text-center">{allDrivers.length} total</p>
+                            </button>
+
+                            <button
+                                onClick={() => setExportFilter('completed')}
+                                className={`p-4 rounded-xl border-2 transition-colors ${exportFilter === 'completed'
+                                        ? 'border-green-500 bg-green-50'
+                                        : 'border-[hsl(var(--border))] hover:border-green-500/50'
+                                    }`}
+                            >
+                                <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                                <p className="font-medium text-center">Completed</p>
+                                <p className="text-xs text-[hsl(var(--muted-foreground))] text-center">Training done</p>
+                            </button>
+
+                            <button
+                                onClick={() => setExportFilter('not_completed')}
+                                className={`p-4 rounded-xl border-2 transition-colors ${exportFilter === 'not_completed'
+                                        ? 'border-amber-500 bg-amber-50'
+                                        : 'border-[hsl(var(--border))] hover:border-amber-500/50'
+                                    }`}
+                            >
+                                <Clock className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+                                <p className="font-medium text-center">Not Completed</p>
+                                <p className="text-xs text-[hsl(var(--muted-foreground))] text-center">Pending training</p>
+                            </button>
+                        </div>
+
+                        <div className="bg-[hsl(var(--secondary))] rounded-xl p-4">
+                            <h4 className="font-medium mb-2">Export includes:</h4>
+                            <ul className="text-sm text-[hsl(var(--muted-foreground))] space-y-1">
+                                <li>• Full Name</li>
+                                <li>• Email Address</li>
+                                <li>• Completion Status (Completed / Not Completed)</li>
+                                <li>• Enrolled Courses</li>
+                                <li>• Progress Percentage</li>
+                                <li>• Certificate Numbers (if any)</li>
+                                <li>• Join Date</li>
+                            </ul>
+                        </div>
+
+                        <button
+                            onClick={exportUsers}
+                            disabled={exporting}
+                            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-[hsl(var(--primary))] text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        >
+                            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                            Download CSV
                         </button>
                     </div>
                 )}

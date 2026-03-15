@@ -30,7 +30,17 @@ export async function middleware(request) {
     } = await supabase.auth.getUser();
 
     // Public routes that don't require auth
-    const publicPaths = ['/login', '/signup', '/forgot-password', '/auth', '/verify', '/reset-password'];
+    const publicPaths = [
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/auth',
+        '/verify',
+        '/reset-password',
+        // SMS webhook endpoints (Twilio needs unauthenticated access)
+        '/api/sms/incoming',
+        '/api/sms/status',
+    ];
     const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
 
     if (!user && !isPublicPath && request.nextUrl.pathname !== '/') {

@@ -167,14 +167,18 @@ export async function POST(request) {
 }
 
 /**
- * GET - Health check endpoint
+ * GET - Twilio webhook validation
+ * Twilio makes GET requests to validate the webhook URL
+ * Must return valid TwiML
  */
 export async function GET() {
-    return NextResponse.json({
-        status: 'ok',
-        message: 'SMS incoming webhook is active',
-        endpoints: {
-            POST: 'Handle incoming SMS messages',
-        }
+    // Return empty TwiML for Twilio validation - this is what Twilio expects
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response></Response>`;
+
+    return new NextResponse(twiml, {
+        headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+        },
     });
 }

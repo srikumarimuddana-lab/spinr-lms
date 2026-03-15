@@ -39,30 +39,24 @@ export async function POST(request) {
             if (course) courseTitle = course.title;
         }
 
-        // Fetch enrollments to get status
-        const { data: enrollments } = await supabase
-            .from('enrollments')
-            .select('user_id, status, progress, courses(title)')
-            .in('user_id', userIds);
-
         const emails = users.map(u => u.email).filter(Boolean);
 
         if (emails.length === 0) {
             return NextResponse.json({ error: 'No valid emails found' }, { status: 400 });
         }
 
-        // Build email content
-        const courseInfo = courseTitle ? ` for el curso: <strong>${courseTitle}</strong>` : '';
-        const defaultMessage = customMessage || 'Esta es una cordial invitación para completar su capacitación pendiente.';
+        // Build email content in English
+        const courseInfo = courseTitle ? ` for the course: <strong>${courseTitle}</strong>` : '';
+        const defaultMessage = customMessage || 'This is a friendly reminder to complete your pending training.';
 
         const htmlBody = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Recordatorio de Capacitación</h2>
+                <h2 style="color: #333;">Training Reminder</h2>
                 <p>${defaultMessage}</p>
                 ${courseInfo ? `<p>${courseInfo}</p>` : ''}
-                <p>Por favor, inicie sesión en su panel de capacitación para continuar:</p>
-                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Ir al Panel de Capacitación</a></p>
-                <p style="margin-top: 20px; color: #666; font-size: 12px;">Este es un recordatorio automático de Spinr LMS.</p>
+                <p>Please log in to your training dashboard to continue:</p>
+                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Go to Training Dashboard</a></p>
+                <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automatic reminder from Spinr LMS.</p>
             </div>
         `;
 
@@ -77,7 +71,7 @@ export async function POST(request) {
             const { error } = await resend.emails.send({
                 from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
                 to: batch,
-                subject: courseTitle ? `Recordatorio: ${courseTitle}` : 'Recordatorio de Capacitación Pendiente',
+                subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
                 html: htmlBody,
             });
 

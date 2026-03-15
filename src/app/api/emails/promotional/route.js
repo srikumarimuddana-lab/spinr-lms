@@ -5,33 +5,51 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
     try {
-        const { subject, body } = await request.json();
+        const { subject, body, userIds, additionalEmails } = await request.json();
 
         if (!subject || !body) {
             return NextResponse.json({ error: 'Subject and body are required' }, { status: 400 });
         }
 
-        // Get all users from Supabase
+        // Get users from Supabase
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        const { data: users, error: usersError } = await supabase
-            .from('lms_users')
-            .select('email')
-            .eq('role', 'driver');
+        let emails = [];
 
-        if (usersError) {
-            return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+        // Get selected users by IDs
+        if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+            const { data: users } = await supabase
+                .from('lms_users')
+                .select('email')
+                .in('id', userIds);
+
+            if (users) {
+                emails = users.map(u => u.email).filter(Boolean);
+            }
         }
 
-        if (!users || users.length === 0) {
-            return NextResponse.json({ error: 'No users found' }, { status: 400 });
+        // Add additional emails
+        if (additionalEmails && typeof additionalEmails === 'string') {
+            const additionalList = additionalEmails
+                .split(/[\n,]/)
+                .map(e => e.trim().toLowerCase())
+                .filter(e => e && e.includes('@'));
+
+            // Add unique emails
+            additionalList.forEach(email => {
+                if (!emails.includes(email)) {
+                    emails.push(email);
+                }
+            });
         }
 
-        const emails = users.map(u => u.email).filter(Boolean);
+        if (emails.length === 0) {
+            return NextResponse.json({ error: 'No valid email addresses found' }, { status: 400 });
+        }
 
         // Send emails in batches (Resend allows up to 100 per batch)
         const batchSize = 100;
@@ -41,7 +59,7 @@ export async function POST(request) {
         for (let i = 0; i < emails.length; i += batchSize) {
             const batch = emails.slice(i, i + batchSize);
 
-            const { data, error } = await resend.emails.send({
+            const { error } = await resend.emails.send({
                 from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
                 to: batch,
                 subject: subject,
@@ -60,7 +78,7 @@ export async function POST(request) {
             success: true,
             sentCount,
             failedCount,
-            message: `Sent promotional email to ${sentCount} users`
+            message: `Sent promotional email to ${sentCount} recipients`
         });
 
     } catch (error) {

@@ -40,17 +40,17 @@ export async function POST(request) {
 
         const courseInfo = courseTitle ? `<h3 style="color: #2563eb;">${courseTitle}</h3>` : '';
         const descriptionInfo = courseDescription ? `<p>${courseDescription}</p>` : '';
-        const defaultMessage = customMessage || 'Le invitiamo a comenzar su capacitación con nosotros.';
+        const defaultMessage = customMessage || 'We invite you to start your training with us.';
 
         const htmlBody = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">¡Bienvenido a Spinr LMS!</h2>
+                <h2 style="color: #333;">Welcome to Spinr LMS!</h2>
                 <p>${defaultMessage}</p>
                 ${courseInfo}
                 ${descriptionInfo}
-                <p>Por favor, regístrese para comenzar su capacitación:</p>
-                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/signup" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Registrarse Ahora</a></p>
-                <p style="margin-top: 20px; color: #666; font-size: 12px;">Este es un correo automático de Spinr LMS.</p>
+                <p>Please sign up to begin your training:</p>
+                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/signup" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Sign Up Now</a></p>
+                <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automatic email from Spinr LMS.</p>
             </div>
         `;
 
@@ -65,7 +65,7 @@ export async function POST(request) {
             const { error } = await resend.emails.send({
                 from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
                 to: batch,
-                subject: courseTitle ? `Invitación: ${courseTitle}` : 'Invitación a Spinr LMS',
+                subject: courseTitle ? `Invitation: ${courseTitle}` : 'Invitation to Spinr LMS',
                 html: htmlBody,
             });
 

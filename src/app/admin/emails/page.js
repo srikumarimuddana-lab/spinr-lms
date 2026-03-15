@@ -1,23 +1,126 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { toast } from 'sonner';
-import { Mail, Send, Users, UserPlus, Clock, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Mail, Send, Users, UserPlus, Clock, CheckCircle, Loader2, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+
+function RichTextEditor({ value, onChange, placeholder }) {
+    const editorRef = useRef(null);
+
+    const execCommand = (command, value = null) => {
+        document.execCommand(command, false, value);
+        onChange(editorRef.current.innerHTML);
+        editorRef.current.focus();
+    };
+
+    const handleImage = () => {
+        const url = prompt('Enter image URL:');
+        if (url) {
+            execCommand('insertImage', url);
+        }
+    };
+
+    const handleLink = () => {
+        const url = prompt('Enter link URL:');
+        if (url) {
+            execCommand('createLink', url);
+        }
+    };
+
+    return (
+        <div className="border border-[hsl(var(--border))] rounded-xl overflow-hidden">
+            {/* Toolbar */}
+            <div className="bg-[hsl(var(--secondary))] px-3 py-2 flex items-center gap-1 border-b border-[hsl(var(--border))]">
+                <button
+                    type="button"
+                    onClick={() => execCommand('bold')}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Bold"
+                >
+                    <Bold className="w-4 h-4" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => execCommand('italic')}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Italic"
+                >
+                    <Italic className="w-4 h-4" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => execCommand('underline')}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Underline"
+                >
+                    <Underline className="w-4 h-4" />
+                </button>
+                <div className="w-px h-6 bg-[hsl(var(--border))] mx-1" />
+                <button
+                    type="button"
+                    onClick={() => execCommand('insertUnorderedList')}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Bullet List"
+                >
+                    <List className="w-4 h-4" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => execCommand('insertOrderedList')}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Numbered List"
+                >
+                    <ListOrdered className="w-4 h-4" />
+                </button>
+                <div className="w-px h-6 bg-[hsl(var(--border))] mx-1" />
+                <button
+                    type="button"
+                    onClick={handleImage}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Insert Image"
+                >
+                    <ImageIcon className="w-4 h-4" />
+                </button>
+                <button
+                    type="button"
+                    onClick={handleLink}
+                    className="p-2 rounded hover:bg-white/50 transition-colors"
+                    title="Insert Link"
+                >
+                    <LinkIcon className="w-4 h-4" />
+                </button>
+            </div>
+
+            {/* Editor */}
+            <div
+                ref={editorRef}
+                contentEditable
+                className="w-full px-4 py-3 min-h-[200px] focus:outline-none prose prose-sm max-w-none"
+                style={{ maxHeight: '300px', overflowY: 'auto' }}
+                onInput={(e) => onChange(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: value }}
+            />
+        </div>
+    );
+}
 
 export default function AdminEmailsPage() {
     const [activeTab, setActiveTab] = useState('promotional');
     const [courses, setCourses] = useState([]);
+    const [allDrivers, setAllDrivers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
 
     // Promotional state
     const [promoSubject, setPromoSubject] = useState('');
     const [promoBody, setPromoBody] = useState('');
+    const [selectedDrivers, setSelectedDrivers] = useState([]);
+    const [additionalEmails, setAdditionalEmails] = useState('');
 
     // Reminders state
     const [pendingUsers, setPendingUsers] = useState([]);
-    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [selectedReminderUsers, setSelectedReminderUsers] = useState([]);
     const [selectedCourse, setSelectedCourse] = useState('');
     const [reminderMessage, setReminderMessage] = useState('');
 
@@ -40,6 +143,7 @@ export default function AdminEmailsPage() {
         ]);
 
         setCourses(coursesRes.data || []);
+        setAllDrivers(usersRes.data || []);
 
         // Get users with pending training
         const enrollments = enrollmentsRes.data || [];
@@ -72,19 +176,31 @@ export default function AdminEmailsPage() {
             return;
         }
 
+        if (selectedDrivers.length === 0 && !additionalEmails.trim()) {
+            toast.error('Please select drivers or add additional emails');
+            return;
+        }
+
         setSending(true);
         try {
             const res = await fetch('/api/emails/promotional', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subject: promoSubject, body: promoBody }),
+                body: JSON.stringify({
+                    subject: promoSubject,
+                    body: promoBody,
+                    userIds: selectedDrivers,
+                    additionalEmails: additionalEmails,
+                }),
             });
             const data = await res.json();
 
             if (data.success) {
-                toast.success(`Sent to ${data.sentCount} users`);
+                toast.success(`Sent to ${data.sentCount} recipients`);
                 setPromoSubject('');
                 setPromoBody('');
+                setSelectedDrivers([]);
+                setAdditionalEmails('');
             } else {
                 toast.error(data.error || 'Failed to send');
             }
@@ -95,7 +211,7 @@ export default function AdminEmailsPage() {
     }
 
     async function sendReminders() {
-        if (selectedUsers.length === 0) {
+        if (selectedReminderUsers.length === 0) {
             toast.error('Please select at least one user');
             return;
         }
@@ -106,7 +222,7 @@ export default function AdminEmailsPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userIds: selectedUsers,
+                    userIds: selectedReminderUsers,
                     courseId: selectedCourse || null,
                     customMessage: reminderMessage,
                 }),
@@ -115,7 +231,7 @@ export default function AdminEmailsPage() {
 
             if (data.success) {
                 toast.success(`Sent reminders to ${data.sentCount} users`);
-                setSelectedUsers([]);
+                setSelectedReminderUsers([]);
                 setReminderMessage('');
             } else {
                 toast.error(data.error || 'Failed to send');
@@ -158,19 +274,35 @@ export default function AdminEmailsPage() {
         setSending(false);
     }
 
-    function toggleUserSelection(userId) {
-        setSelectedUsers(prev =>
+    function toggleDriverSelection(userId) {
+        setSelectedDrivers(prev =>
             prev.includes(userId)
                 ? prev.filter(id => id !== userId)
                 : [...prev, userId]
         );
     }
 
-    function selectAllUsers() {
-        if (selectedUsers.length === pendingUsers.length) {
-            setSelectedUsers([]);
+    function selectAllDrivers() {
+        if (selectedDrivers.length === allDrivers.length) {
+            setSelectedDrivers([]);
         } else {
-            setSelectedUsers(pendingUsers.map(u => u.id));
+            setSelectedDrivers(allDrivers.map(u => u.id));
+        }
+    }
+
+    function toggleReminderUserSelection(userId) {
+        setSelectedReminderUsers(prev =>
+            prev.includes(userId)
+                ? prev.filter(id => id !== userId)
+                : [...prev, userId]
+        );
+    }
+
+    function selectAllReminderUsers() {
+        if (selectedReminderUsers.length === pendingUsers.length) {
+            setSelectedReminderUsers([]);
+        } else {
+            setSelectedReminderUsers(pendingUsers.map(u => u.id));
         }
     }
 
@@ -223,7 +355,7 @@ export default function AdminEmailsPage() {
                     <div className="space-y-4">
                         <div>
                             <h3 className="font-semibold mb-1">Send Promotional Email</h3>
-                            <p className="text-sm text-[hsl(var(--muted-foreground))]">Send an email to all registered drivers</p>
+                            <p className="text-sm text-[hsl(var(--muted-foreground))]">Select drivers and/or add additional email addresses</p>
                         </div>
 
                         <div>
@@ -239,22 +371,88 @@ export default function AdminEmailsPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1.5">Message</label>
-                            <textarea
+                            <RichTextEditor
                                 value={promoBody}
-                                onChange={(e) => setPromoBody(e.target.value)}
-                                placeholder="Enter your message..."
-                                rows={8}
-                                className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] text-sm resize-none"
+                                onChange={setPromoBody}
+                                placeholder="Write your message here..."
                             />
+                        </div>
+
+                        {/* Driver Selection */}
+                        <div className="border border-[hsl(var(--border))] rounded-xl overflow-hidden">
+                            <div className="bg-[hsl(var(--secondary))] px-4 py-3 flex items-center justify-between">
+                                <button
+                                    onClick={selectAllDrivers}
+                                    className="flex items-center gap-2 text-sm font-medium hover:text-[hsl(var(--primary))]"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedDrivers.length === allDrivers.length && allDrivers.length > 0}
+                                        onChange={selectAllDrivers}
+                                        className="w-4 h-4 rounded"
+                                    />
+                                    Select All Drivers ({allDrivers.length})
+                                </button>
+                                <span className="text-sm text-[hsl(var(--muted-foreground))]">
+                                    {selectedDrivers.length} selected
+                                </span>
+                            </div>
+
+                            <div className="max-h-48 overflow-y-auto">
+                                {allDrivers.length === 0 ? (
+                                    <div className="p-8 text-center text-[hsl(var(--muted-foreground))]">
+                                        <p>No drivers found!</p>
+                                    </div>
+                                ) : (
+                                    allDrivers.map(user => (
+                                        <div
+                                            key={user.id}
+                                            className="px-4 py-2 border-b border-[hsl(var(--border))] last:border-0 flex items-center gap-3 hover:bg-[hsl(var(--secondary))]/50 cursor-pointer"
+                                            onClick={() => toggleDriverSelection(user.id)}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedDrivers.includes(user.id)}
+                                                onChange={() => toggleDriverSelection(user.id)}
+                                                className="w-4 h-4 rounded"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{user.full_name}</p>
+                                                <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">{user.email}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Additional Emails */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5">
+                                Additional Email Addresses
+                                <span className="text-[hsl(var(--muted-foreground))] font-normal ml-1">(not in the list - one per line)</span>
+                            </label>
+                            <textarea
+                                value={additionalEmails}
+                                onChange={(e) => setAdditionalEmails(e.target.value)}
+                                placeholder="john@example.com&#10;jane@example.com"
+                                rows={4}
+                                className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] text-sm resize-none font-mono"
+                            />
+                            {additionalEmails.trim() && (
+                                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                                    {additionalEmails.split(/[\n,]/).filter(e => e.trim().includes('@')).length} additional email(s)
+                                </p>
+                            )}
                         </div>
 
                         <button
                             onClick={sendPromotionalEmail}
-                            disabled={sending || !promoSubject.trim() || !promoBody.trim()}
+                            disabled={sending || !promoSubject.trim() || !promoBody.trim() || (selectedDrivers.length === 0 && !additionalEmails.trim())}
                             className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-[hsl(var(--primary))] text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                         >
                             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Send to All Drivers
+                            Send ({selectedDrivers.length + (additionalEmails.trim() ? additionalEmails.split(/[\n,]/).filter(e => e.trim().includes('@')).length : 0)} recipients)
                         </button>
                     </div>
                 )}
@@ -300,19 +498,19 @@ export default function AdminEmailsPage() {
                         <div className="border border-[hsl(var(--border))] rounded-xl overflow-hidden">
                             <div className="bg-[hsl(var(--secondary))] px-4 py-3 flex items-center justify-between">
                                 <button
-                                    onClick={selectAllUsers}
+                                    onClick={selectAllReminderUsers}
                                     className="flex items-center gap-2 text-sm font-medium hover:text-[hsl(var(--primary))]"
                                 >
                                     <input
                                         type="checkbox"
-                                        checked={selectedUsers.length === pendingUsers.length && pendingUsers.length > 0}
-                                        onChange={selectAllUsers}
+                                        checked={selectedReminderUsers.length === pendingUsers.length && pendingUsers.length > 0}
+                                        onChange={selectAllReminderUsers}
                                         className="w-4 h-4 rounded"
                                     />
                                     Select All ({pendingUsers.length})
                                 </button>
                                 <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                                    {selectedUsers.length} selected
+                                    {selectedReminderUsers.length} selected
                                 </span>
                             </div>
 
@@ -334,12 +532,12 @@ export default function AdminEmailsPage() {
                                             <div
                                                 key={user.id}
                                                 className="px-4 py-3 border-b border-[hsl(var(--border))] last:border-0 flex items-start gap-3 hover:bg-[hsl(var(--secondary))]/50 cursor-pointer"
-                                                onClick={() => toggleUserSelection(user.id)}
+                                                onClick={() => toggleReminderUserSelection(user.id)}
                                             >
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedUsers.includes(user.id)}
-                                                    onChange={() => toggleUserSelection(user.id)}
+                                                    checked={selectedReminderUsers.includes(user.id)}
+                                                    onChange={() => toggleReminderUserSelection(user.id)}
                                                     className="w-4 h-4 mt-1 rounded"
                                                 />
                                                 <div className="flex-1 min-w-0">
@@ -350,8 +548,8 @@ export default function AdminEmailsPage() {
                                                     {filteredEnrollments.map((enr, idx) => (
                                                         <div key={idx} className="text-xs">
                                                             <span className={`px-1.5 py-0.5 rounded ${enr.status === 'in_progress'
-                                                                    ? 'bg-amber-50 text-amber-700'
-                                                                    : 'bg-blue-50 text-blue-700'
+                                                                ? 'bg-amber-50 text-amber-700'
+                                                                : 'bg-blue-50 text-blue-700'
                                                                 }`}>
                                                                 {enr.status === 'in_progress' ? 'In Progress' : 'Enrolled'}
                                                             </span>
@@ -370,11 +568,11 @@ export default function AdminEmailsPage() {
 
                         <button
                             onClick={sendReminders}
-                            disabled={sending || selectedUsers.length === 0}
+                            disabled={sending || selectedReminderUsers.length === 0}
                             className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3 bg-[hsl(var(--primary))] text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                         >
                             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Send Reminders ({selectedUsers.length})
+                            Send Reminders ({selectedReminderUsers.length})
                         </button>
                     </div>
                 )}

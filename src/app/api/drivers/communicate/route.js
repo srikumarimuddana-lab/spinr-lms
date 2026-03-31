@@ -219,8 +219,15 @@ async function sendDriverEmail(supabase, driver, messageType, template, subject,
       emailResult = { success: true, messageId: data?.id };
     }
   } else {
-    // Template-based email
-    const templateType = template || (messageType === 'invite' ? 'course_invitation' : 'training_reminder');
+    // Template-based email - use driver-specific templates
+    let templateType = template;
+    if (!templateType) {
+      if (messageType === 'invite') {
+        templateType = 'driver_invitation';
+      } else {
+        templateType = 'driver_reminder';
+      }
+    }
     
     emailResult = await sendEmailFromTemplate({
       to: driver.email,

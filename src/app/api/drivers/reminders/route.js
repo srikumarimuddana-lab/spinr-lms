@@ -107,7 +107,8 @@ export async function POST(request) {
       if (communication_type === 'email' || communication_type === 'both') {
         if (driver.email) {
           try {
-            const templateType = isNotRegistered ? 'course_invitation' : 'training_reminder';
+            // Use driver-specific templates
+            const templateType = isNotRegistered ? 'driver_invitation' : 'driver_reminder';
             const emailResult = await sendEmailFromTemplate({
               to: driver.email,
               templateType,

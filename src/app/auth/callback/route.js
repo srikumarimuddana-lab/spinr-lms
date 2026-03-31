@@ -17,11 +17,18 @@ export async function GET(request) {
     if (code) {
         const { createClient } = await import('@/lib/supabase-server');
         const supabase = await createClient();
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error) {
-            // If this is a password recovery, redirect to reset-password page
-            if (type === 'recovery' || request.url.includes('recovery')) {
+            // Check if this is a password recovery flow via:
+            // 1. The `type` query param (not always present)
+            // 2. The session's AMR (authentication methods reference) — most reliable
+            const isRecovery =
+                type === 'recovery' ||
+                request.url.includes('recovery') ||
+                data?.session?.amr?.some((entry) => entry.method === 'recovery');
+
+            if (isRecovery) {
                 return NextResponse.redirect(`${origin}/reset-password`);
             }
             return NextResponse.redirect(`${origin}${next}`);

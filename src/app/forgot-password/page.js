@@ -42,7 +42,7 @@ function ForgotPasswordContent() {
         setLoading(true);
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${origin}/auth/callback`,
+                redirectTo: `${origin}/auth/callback?type=recovery`,
             });
             if (error) throw error;
             setSent(true);

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { sendSMSWithRetry, checkOptOutStatus } from '@/lib/twilio-client';
+import { requireAdmin } from '@/lib/api-auth';
 
-const DEFAULT_MESSAGE = `🚗 Hey! Complete your Spinr driver registration in 2 mins and start earning. 
+const DEFAULT_MESSAGE = `Hey! Complete your Spinr driver registration in 2 mins and start earning. 
 Open the app: https://spinr.ca/signup?ref=sms 
 Reply STOP to opt out.`;
 
@@ -10,6 +11,10 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function POST(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { phones, message, customMessage } = await request.json();
 
         if (!phones || !Array.isArray(phones) || phones.length === 0) {
@@ -142,6 +147,10 @@ export async function POST(request) {
 // GET endpoint to fetch SMS history
 export async function GET(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { searchParams } = new URL(request.url);
         const limit = parseInt(searchParams.get('limit') || '50');
         const status = searchParams.get('status');

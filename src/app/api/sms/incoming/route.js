@@ -1,10 +1,36 @@
 import { NextResponse } from 'next/server';
-import { sendSMS } from '@/lib/twilio-client';
+import twilio from 'twilio';
 
 // Standard STOP keywords that trigger opt-out
 const STOP_KEYWORDS = ['stop', 'stop all', 'unsubscribe', 'cancel', 'end', 'quit'];
 // Keywords to re-opt in
 const OPTIN_KEYWORDS = ['start', 'subscribe', 'yes', 'unstop', 'opt in'];
+
+/**
+ * Validate Twilio webhook signature
+ * @param {Request} request - The incoming request
+ * @param {string} body - The raw request body
+ * @returns {boolean} - Whether the signature is valid
+ */
+async function validateTwilioSignature(request, params) {
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!authToken) {
+        console.error('TWILIO_AUTH_TOKEN not configured');
+        return false;
+    }
+
+    const signature = request.headers.get('X-Twilio-Signature');
+    if (!signature) {
+        console.error('Missing X-Twilio-Signature header');
+        return false;
+    }
+
+    // Get the full URL that Twilio used to call us
+    const url = process.env.TWILIO_WEBHOOK_URL || request.url;
+
+    // Validate the signature
+    return twilio.validateRequest(authToken, signature, url, params);
+}
 
 /**
  * Format phone number to consistent E.164 format
@@ -42,16 +68,41 @@ export async function POST(request) {
         // Parse form data from Twilio (Twilio sends form-urlencoded)
         const formData = await request.formData();
 
-        const from = formData.get('From');      // User's phone number
-        const body = formData.get('Body');      // The message content
-        const messageSid = formData.get('MessageSid');   // Message SID
+        // Convert FormData to object for signature validation
+        const params = {};
+        for (const [key, value] of formData.entries()) {
+            params[key] = value;
+        }
 
-        // Log the incoming message for debugging
-        console.log('Incoming SMS:', { from, body, messageSid });
+        // Validate Twilio webhook signature (skip in development if not configured)
+        const isDev = process.env.NODE_ENV === 'development';
+        const skipValidation = isDev && !process.env.TWILIO_WEBHOOK_URL;
+        
+        if (!skipValidation) {
+            const isValid = await validateTwilioSignature(request, params);
+            if (!isValid) {
+                console.error('Invalid Twilio signature - rejecting request');
+                return new NextResponse('Forbidden', { status: 403 });
+            }
+        }
+
+        const from = params.From;      // User's phone number
+        const body = params.Body;      // The message content
+        const messageSid = params.MessageSid;   // Message SID
+
+        // Log the incoming message (redact phone in production)
+        if (isDev) {
+            console.log('Incoming SMS:', { from, body, messageSid });
+        } else {
+            console.log('Incoming SMS:', { messageSid, bodyLength: body?.length });
+        }
 
         if (!from || !body) {
             console.error('Missing required fields from Twilio');
-            return NextResponse.xml('<Response></Response>', { status: 200 });
+            const emptyTwiml = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
+            return new NextResponse(emptyTwiml, {
+                headers: { 'Content-Type': 'text/xml' },
+            });
         }
 
         // Format phone number consistently

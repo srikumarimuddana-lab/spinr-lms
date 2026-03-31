@@ -1,10 +1,45 @@
 import { NextResponse } from 'next/server';
 
+/**
+ * Validate and sanitize the 'next' redirect parameter to prevent open redirects
+ * Only allows relative paths starting with '/'
+ */
+function getSafeRedirectPath(nextParam) {
+    const defaultPath = '/dashboard';
+    
+    if (!nextParam || typeof nextParam !== 'string') {
+        return defaultPath;
+    }
+    
+    // Trim and get the path
+    const path = nextParam.trim();
+    
+    // Must start with exactly one forward slash (not // which could be protocol-relative)
+    if (!path.startsWith('/') || path.startsWith('//')) {
+        return defaultPath;
+    }
+    
+    // Block any attempts to include protocol or domain
+    if (path.includes(':') || path.includes('\\')) {
+        return defaultPath;
+    }
+    
+    // Parse the path to ensure it's valid
+    try {
+        // Use URL parsing to validate - if it parses as a full URL, it's not safe
+        const parsed = new URL(path, 'http://localhost');
+        // Only return the pathname to strip any query strings that might be malicious
+        return parsed.pathname;
+    } catch {
+        return defaultPath;
+    }
+}
+
 export async function GET(request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
     const type = searchParams.get('type');
-    const next = searchParams.get('next') ?? '/dashboard';
+    const next = getSafeRedirectPath(searchParams.get('next'));
     const errorCode = searchParams.get('error_code');
     const errorDescription = searchParams.get('error_description');
 

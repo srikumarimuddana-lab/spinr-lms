@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
+import { requireAdmin } from '@/lib/api-auth';
 
 /**
  * Send email from any database template
@@ -17,6 +18,10 @@ import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
  */
 export async function POST(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { templateType, recipients, variables } = await request.json();
 
         if (!templateType || !recipients || !Array.isArray(recipients)) {
@@ -55,6 +60,10 @@ export async function POST(request) {
 }
 
 export async function GET() {
+    // Require admin authentication
+    const auth = await requireAdmin();
+    if (auth.response) return auth.response;
+
     const templates = await getAvailableTemplates();
     return NextResponse.json({ templates });
 }

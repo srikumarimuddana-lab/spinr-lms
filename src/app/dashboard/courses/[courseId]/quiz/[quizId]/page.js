@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase-client';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
+
+// Note: Quiz grading is done server-side for security. The client never receives
+// is_correct values for quiz options. See /api/quiz/grade for the grading logic.
 
 export default function QuizPage() {
     const { courseId, quizId } = useParams();
@@ -16,23 +18,25 @@ export default function QuizPage() {
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const supabase = createClient();
 
     useEffect(() => { loadQuiz(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [quizId]);
 
     async function loadQuiz() {
-        const { data: quizData } = await supabase.from('quizzes').select('*').eq('id', quizId).single();
-        const { data: questionsData } = await supabase
-            .from('quiz_questions')
-            .select('*, quiz_options(*)')
-            .eq('quiz_id', quizId)
-            .order('sort_order');
-
-        setQuiz(quizData);
-        // Randomize questions and select up to 10
-        const shuffledQuestions = questionsData?.sort(() => 0.5 - Math.random());
-        const selectedQuestions = shuffledQuestions?.slice(0, 10);
-        setQuestions(selectedQuestions || []);
+        try {
+            // Fetch questions from secure API (does not expose is_correct)
+            const response = await fetch(`/api/quiz/questions?quizId=${quizId}`);
+            if (!response.ok) {
+                toast.error('Failed to load quiz');
+                setLoading(false);
+                return;
+            }
+            const data = await response.json();
+            setQuiz(data.quiz);
+            setQuestions(data.questions || []);
+        } catch (error) {
+            console.error('Failed to load quiz:', error);
+            toast.error('Failed to load quiz');
+        }
         setLoading(false);
     }
 
@@ -47,50 +51,49 @@ export default function QuizPage() {
         }
 
         setSubmitting(true);
-        let correct = 0;
-        questions.forEach((q) => {
-            const selectedOption = q.quiz_options.find((o) => o.id === answers[q.id]);
-            if (selectedOption?.is_correct) correct++;
-        });
 
-        const score = (correct / questions.length) * 100;
-        const passed = score >= (quiz?.passing_score || 70);
-
-        const { data: { user } } = await supabase.auth.getUser();
-
-        await supabase.from('quiz_attempts').insert({
-            user_id: user.id,
-            quiz_id: quizId,
-            score,
-            passed,
-            answers,
-        });
-
-        // Get driver profile for audit log
-        const { data: profile } = await supabase.from('lms_users').select('full_name, email').eq('id', user.id).maybeSingle();
-
-        // Audit log
-        await fetch('/api/audit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: passed ? 'quiz_passed' : 'quiz_failed',
-                entityType: 'quiz',
-                entityId: quizId,
-                details: { score, passed, correct, total: questions.length, driver_name: profile?.full_name, email: profile?.email, quiz_title: quiz?.title },
-            }),
-        });
-
-        // If passed, check if all quizzes in course are passed → generate certificate
-        if (passed) {
-            await fetch('/api/certificates', {
+        try {
+            // Submit answers to server for secure grading
+            const gradeResponse = await fetch('/api/quiz/grade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ courseId }),
+                body: JSON.stringify({
+                    quizId,
+                    courseId,
+                    answers,
+                    questionIds: questions.map(q => q.id),
+                }),
             });
+
+            if (!gradeResponse.ok) {
+                const errorData = await gradeResponse.json();
+                toast.error(errorData.error || 'Failed to submit quiz');
+                setSubmitting(false);
+                return;
+            }
+
+            const gradeResult = await gradeResponse.json();
+
+            // If passed, attempt to generate certificate
+            if (gradeResult.passed) {
+                await fetch('/api/certificates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ courseId }),
+                });
+            }
+
+            setResult({
+                score: gradeResult.score,
+                passed: gradeResult.passed,
+                correct: gradeResult.correct,
+                total: gradeResult.total,
+            });
+        } catch (error) {
+            console.error('Quiz submission error:', error);
+            toast.error('Failed to submit quiz');
         }
 
-        setResult({ score, passed, correct, total: questions.length });
         setSubmitting(false);
     }
 

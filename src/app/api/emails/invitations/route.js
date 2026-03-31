@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { sendBulkEmails } from '@/lib/email/sender';
+import { requireAdmin } from '@/lib/api-auth';
 
 export async function POST(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { emails, courseId, customMessage } = await request.json();
 
         // Parse emails from text area (one per line)

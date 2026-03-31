@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
+import { requireAdmin } from '@/lib/api-auth';
 
 export async function POST(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { userIds, courseId, customMessage } = await request.json();
 
         if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -76,6 +81,10 @@ export async function POST(request) {
 }
 
 export async function GET() {
+    // Require admin authentication
+    const auth = await requireAdmin();
+    if (auth.response) return auth.response;
+
     const templates = await getAvailableTemplates();
     return NextResponse.json({ templates });
 }

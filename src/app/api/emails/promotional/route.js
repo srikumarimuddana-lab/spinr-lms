@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
+import { requireAdmin } from '@/lib/api-auth';
 
 export async function POST(request) {
     try {
+        // Require admin authentication
+        const auth = await requireAdmin();
+        if (auth.response) return auth.response;
+
         const { subject, body, userIds, additionalEmails, preheader, ctaLink, ctaText, templateId } = await request.json();
 
         if (!subject || !body) {
@@ -114,6 +119,10 @@ export async function POST(request) {
 }
 
 export async function GET() {
+    // Require admin authentication
+    const auth = await requireAdmin();
+    if (auth.response) return auth.response;
+
     const templates = await getAvailableTemplates();
     return NextResponse.json({ templates });
 }

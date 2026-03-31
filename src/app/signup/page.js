@@ -47,11 +47,12 @@ export default function SignupPage() {
             if (error) throw error;
 
             // Create lms_users record via API
+            // Note: The API uses the authenticated user's ID from the session, not client-supplied values
             if (data.user) {
                 await fetch('/api/auth/signup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: data.user.id, email, fullName }),
+                    body: JSON.stringify({ fullName }),
                 });
             }
 

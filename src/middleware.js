@@ -57,6 +57,10 @@ export async function middleware(request) {
     }
 
     if (!user && !isPublicPath && request.nextUrl.pathname !== '/') {
+        // For API routes, return 401 instead of redirecting
+        if (request.nextUrl.pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         const url = request.nextUrl.clone();
         url.pathname = '/login';
         return NextResponse.redirect(url);

@@ -1,7 +1,29 @@
 /**
  * Email Templates for Spinr LMS
  * Centralized template system for all transactional and promotional emails
+ * 
+ * SECURITY NOTE: All user-provided values must be HTML-escaped before injection.
+ * Use escapeHtml() for any dynamic content that could contain user input.
  */
+
+/**
+ * Escape HTML special characters to prevent XSS
+ */
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    if (typeof str !== 'string') str = String(str);
+    
+    const htmlEscapes = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '/': '&#x2F;',
+    };
+    
+    return str.replace(/[&<>"'/]/g, char => htmlEscapes[char]);
+}
 
 // Base email layout wrapper
 export function createEmailLayout({
@@ -11,13 +33,19 @@ export function createEmailLayout({
     footerText,
     branding = true,
 }) {
+    // Escape user-provided values
+    const safeTitle = escapeHtml(title);
+    const safeFooterText = footerText ? escapeHtml(footerText) : 'This is an automated message from Spinr LMS. Please do not reply to this email.';
+    const safeCtaHref = ctaButton?.href ? escapeHtml(ctaButton.href) : '';
+    const safeCtaText = ctaButton?.text ? escapeHtml(ctaButton.text) : '';
+
     return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title}</title>
+    <title>${safeTitle}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
     <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6;">
@@ -27,7 +55,7 @@ export function createEmailLayout({
                     ${branding ? `
                     <tr>
                         <td style="background-color: #2563eb; padding: 24px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">${title}</h1>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">${safeTitle}</h1>
                         </td>
                     </tr>
                     ` : ''}
@@ -38,9 +66,9 @@ export function createEmailLayout({
                             <table role="presentation" style="margin: 24px 0; width: 100%;">
                                 <tr>
                                     <td align="center">
-                                        <a href="${ctaButton.href}"
+                                        <a href="${safeCtaHref}"
                                            style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; text-align: center;">
-                                            ${ctaButton.text}
+                                            ${safeCtaText}
                                         </a>
                                     </td>
                                 </tr>
@@ -51,7 +79,7 @@ export function createEmailLayout({
                     <tr>
                         <td style="background-color: #f9fafb; padding: 24px 32px; border-top: 1px solid #e5e7eb;">
                             <p style="margin: 0; color: #6b7280; font-size: 14px; text-align: center;">
-                                ${footerText || 'This is an automated message from Spinr LMS. Please do not reply to this email.'}
+                                ${safeFooterText}
                             </p>
                             <p style="margin: 8px 0 0 0; color: #9ca3af; font-size: 12px; text-align: center;">
                                 &copy; ${new Date().getFullYear()} Spinr LMS. All rights reserved.
@@ -69,7 +97,10 @@ export function createEmailLayout({
 
 // Content helpers
 export function createContentBlock({ heading, paragraphs, items }) {
-    const headingHtml = heading ? `<h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 20px; font-weight: 600;">${heading}</h2>` : '';
+    const safeHeading = escapeHtml(heading);
+    const headingHtml = heading ? `<h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 20px; font-weight: 600;">${safeHeading}</h2>` : '';
+    // Note: paragraphs may contain intentional HTML markup (like <strong>), so they're not escaped here
+    // The individual template functions should escape user data before creating paragraphs
     const paragraphsHtml = paragraphs?.map(p => `<p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">${p}</p>`).join('') || '';
     const itemsHtml = items ? `
         <ul style="margin: 16px 0; padding-left: 24px; color: #374151; font-size: 16px; line-height: 1.8;">
@@ -84,10 +115,13 @@ export function createContentBlock({ heading, paragraphs, items }) {
 // TEMPLATE: Password Reset
 // ============================================================================
 export function passwordResetTemplate({ userName, resetLink, expiryHours = 1 }) {
+    const safeUserName = escapeHtml(userName) || 'there';
+    const safeResetLink = escapeHtml(resetLink);
+    
     const content = createContentBlock({
         heading: 'Reset Your Password',
         paragraphs: [
-            `Hi ${userName || 'there'},`,
+            `Hi ${safeUserName},`,
             `We received a request to reset your password for your Spinr LMS account.`,
             `Click the button below to set a new password. This link will expire in ${expiryHours} hour(s).`,
             `If you didn't request this password reset, you can safely ignore this email.`,
@@ -98,10 +132,10 @@ export function passwordResetTemplate({ userName, resetLink, expiryHours = 1 }) 
         title: 'Password Reset',
         content,
         ctaButton: {
-            href: resetLink,
+            href: resetLink, // Will be escaped in createEmailLayout
             text: 'Reset Password',
         },
-        footerText: 'If you\'re having trouble clicking the button, copy and paste this link into your browser: ' + resetLink,
+        footerText: 'If you\'re having trouble clicking the button, copy and paste this link into your browser: ' + safeResetLink,
     });
 }
 
@@ -109,12 +143,15 @@ export function passwordResetTemplate({ userName, resetLink, expiryHours = 1 }) 
 // TEMPLATE: Email Verification
 // ============================================================================
 export function emailVerificationTemplate({ userName, verificationLink, confirmationCode }) {
+    const safeUserName = escapeHtml(userName) || 'there';
+    const safeConfirmationCode = escapeHtml(confirmationCode);
+    
     const content = createContentBlock({
         heading: 'Verify Your Email',
         paragraphs: [
-            `Hi ${userName || 'there'},`,
+            `Hi ${safeUserName},`,
             `Welcome to Spinr LMS! Please verify your email address to complete your registration.`,
-            confirmationCode ? `Your confirmation code is: <strong style="font-size: 18px; letter-spacing: 4px;">${confirmationCode}</strong>` : 'Click the button below to verify your email address.',
+            confirmationCode ? `Your confirmation code is: <strong style="font-size: 18px; letter-spacing: 4px;">${safeConfirmationCode}</strong>` : 'Click the button below to verify your email address.',
         ],
     });
 
@@ -133,12 +170,16 @@ export function emailVerificationTemplate({ userName, verificationLink, confirma
 // TEMPLATE: Training Reminder
 // ============================================================================
 export function trainingReminderTemplate({ userName, courseTitle, customMessage, dashboardLink }) {
+    const safeUserName = escapeHtml(userName) || 'there';
+    const safeCourseTitle = escapeHtml(courseTitle);
+    const safeCustomMessage = escapeHtml(customMessage);
+    
     const content = createContentBlock({
         heading: 'Training Reminder',
         paragraphs: [
-            `Hi ${userName || 'there'},`,
-            customMessage || 'This is a friendly reminder to complete your pending training.',
-            courseTitle ? `Course: <strong>${courseTitle}</strong>` : '',
+            `Hi ${safeUserName},`,
+            safeCustomMessage || 'This is a friendly reminder to complete your pending training.',
+            courseTitle ? `Course: <strong>${safeCourseTitle}</strong>` : '',
         ],
     });
 
@@ -156,18 +197,23 @@ export function trainingReminderTemplate({ userName, courseTitle, customMessage,
 // TEMPLATE: Course Invitation
 // ============================================================================
 export function courseInvitationTemplate({ userName, courseTitle, courseDescription, customMessage, signupLink }) {
+    const safeUserName = escapeHtml(userName) || 'there';
+    const safeCourseTitle = escapeHtml(courseTitle);
+    const safeCourseDescription = escapeHtml(courseDescription);
+    const safeCustomMessage = escapeHtml(customMessage);
+    
     const content = createContentBlock({
         heading: 'Welcome to Spinr LMS!',
         paragraphs: [
-            `Hi ${userName || 'there'},`,
-            customMessage || 'We invite you to start your training with us.',
+            `Hi ${safeUserName},`,
+            safeCustomMessage || 'We invite you to start your training with us.',
         ],
-        items: courseTitle ? [`Course: <strong>${courseTitle}</strong>`] : [],
+        items: courseTitle ? [`Course: <strong>${safeCourseTitle}</strong>`] : [],
     });
 
     const descriptionHtml = courseDescription ? `
         <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.6;">${courseDescription}</p>
+            <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.6;">${safeCourseDescription}</p>
         </div>
     ` : '';
 
@@ -198,16 +244,20 @@ export function promotionalTemplate({ subject, preheader, content: contentHtml, 
 // TEMPLATE: Account Notification
 // ============================================================================
 export function accountNotificationTemplate({ userName, subject, message, actionRequired }) {
+    const safeUserName = escapeHtml(userName) || 'there';
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = escapeHtml(message);
+    
     const content = createContentBlock({
-        heading: subject,
+        heading: safeSubject,
         paragraphs: [
-            `Hi ${userName || 'there'},`,
-            message,
+            `Hi ${safeUserName},`,
+            safeMessage,
         ],
     });
 
     return createEmailLayout({
-        title: subject,
+        title: subject, // Will be escaped in createEmailLayout
         content,
         ctaButton: actionRequired ? {
             href: actionRequired.link,

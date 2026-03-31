@@ -16,7 +16,17 @@
 import { Resend } from 'resend';
 import { EmailConfig } from './templates';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend client lazily to avoid build-time errors when API key is not set
+let resend = null;
+function getResendClient() {
+    if (!resend) {
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error('RESEND_API_KEY environment variable is not set');
+        }
+        resend = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resend;
+}
 
 /**
  * Get email template from database
@@ -41,11 +51,36 @@ export async function getTemplateFromDb(templateType) {
 }
 
 /**
+ * Escape HTML special characters to prevent XSS
+ * @param {string} str - String to escape
+ * @returns {string} - HTML-escaped string
+ */
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    if (typeof str !== 'string') str = String(str);
+    
+    const htmlEscapes = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '/': '&#x2F;',
+    };
+    
+    return str.replace(/[&<>"'/]/g, char => htmlEscapes[char]);
+}
+
+/**
  * Replace template variables with actual values
  *
  * Supports:
- * - Simple variables: {{userName}} → John
+ * - Simple variables: {{userName}} → John (HTML-escaped)
+ * - Raw/unescaped variables: {{{htmlContent}}} → <strong>bold</strong> (NOT escaped - use with caution)
  * - Conditional blocks: {{#courseTitle}}...{{/courseTitle}}
+ * 
+ * SECURITY: All {{variable}} values are HTML-escaped to prevent XSS.
+ * Only use {{{variable}}} for trusted HTML content that you control.
  */
 export function substituteTemplateVariables(html, variables) {
     let result = html;
@@ -58,10 +93,16 @@ export function substituteTemplateVariables(html, variables) {
         return value ? content : '';
     });
 
-    // Handle simple variables: {{variable}}
+    // Handle unescaped/raw variables first: {{{variable}}} - for trusted HTML content only
+    Object.entries(variables).forEach(([key, value]) => {
+        const rawRegex = new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g');
+        result = result.replace(rawRegex, value || '');
+    });
+
+    // Handle simple variables with HTML escaping: {{variable}}
     Object.entries(variables).forEach(([key, value]) => {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        result = result.replace(regex, value || '');
+        result = result.replace(regex, escapeHtml(value));
     });
 
     return result;
@@ -70,12 +111,13 @@ export function substituteTemplateVariables(html, variables) {
 /**
  * Send email with retry logic for rate limits
  */
-async function sendEmailWithRetry(resend, emailConfig, maxRetries = 3) {
+async function sendEmailWithRetry(emailConfig, maxRetries = 3) {
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+    const client = getResendClient();
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            const { data, error } = await resend.emails.send(emailConfig);
+            const { data, error } = await client.emails.send(emailConfig);
 
             if (error) {
                 if (error.statusCode === 429) {
@@ -129,7 +171,7 @@ export async function sendEmailFromTemplate({ to, templateType, variables, subje
     const emailSubject = subject || template.subject;
 
     // Send email
-    const result = await sendEmailWithRetry(resend, {
+    const result = await sendEmailWithRetry({
         from: EmailConfig.from,
         reply_to: replyTo || EmailConfig.replyTo,
         to: [to],

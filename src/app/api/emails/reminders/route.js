@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { trainingReminderTemplate, EmailConfig } from '@/lib/email';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -72,41 +73,27 @@ export async function POST(request) {
             if (course) courseTitle = course.title;
         }
 
-        const emails = users.map(u => u.email).filter(Boolean);
-
-        if (emails.length === 0) {
-            return NextResponse.json({ error: 'No valid emails found' }, { status: 400 });
-        }
-
-        // Build email content in English
-        const courseInfo = courseTitle ? ` for the course: <strong>${courseTitle}</strong>` : '';
-        const defaultMessage = customMessage || 'This is a friendly reminder to complete your pending training.';
-
-        const htmlBody = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Training Reminder</h2>
-                <p>${defaultMessage}</p>
-                ${courseInfo ? `<p>${courseInfo}</p>` : ''}
-                <p>Please log in to your training dashboard to continue:</p>
-                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/dashboard" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Go to Training Dashboard</a></p>
-                <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automatic reminder from Spinr LMS.</p>
-            </div>
-        `;
+        const dashboardLink = `${EmailConfig.baseUrl}/dashboard`;
 
         // Send individual emails with delay to respect rate limits
         let sentCount = 0;
         let failedCount = 0;
 
-        // Resend free tier: 100 emails/day, 2 emails/second rate limit
-        // Add 550ms delay between each email to stay under limit (550ms = ~1.8/sec)
-        const EMAIL_DELAY_MS = 550;
+        for (const user of users) {
+            const email = user.email;
+            if (!email) continue;
 
-        for (let i = 0; i < emails.length; i++) {
-            const email = emails[i];
+            const htmlBody = trainingReminderTemplate({
+                userName: user.full_name,
+                courseTitle,
+                customMessage,
+                dashboardLink,
+            });
 
             try {
                 const result = await sendEmailWithRetry(resend, {
-                    from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
+                    from: EmailConfig.from,
+                    reply_to: EmailConfig.replyTo,
                     to: [email],
                     subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
                     html: htmlBody,
@@ -124,8 +111,8 @@ export async function POST(request) {
             }
 
             // Add delay between emails (except after the last one)
-            if (i < emails.length - 1) {
-                await delay(EMAIL_DELAY_MS);
+            if (users.indexOf(user) < users.length - 1) {
+                await delay(EmailConfig.rateLimit.delayBetweenEmails);
             }
         }
 
@@ -133,7 +120,7 @@ export async function POST(request) {
             success: true,
             sentCount,
             failedCount,
-            total: emails.length,
+            total: users.length,
             message: `Sent reminder emails to ${sentCount} users${failedCount > 0 ? ` (${failedCount} failed)` : ''}`
         });
 

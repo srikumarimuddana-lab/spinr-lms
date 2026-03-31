@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { promotionalTemplate, EmailConfig } from '@/lib/email';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -38,7 +39,7 @@ async function sendEmailWithRetry(resend, emailConfig, maxRetries = 3) {
 
 export async function POST(request) {
     try {
-        const { subject, body, userIds, additionalEmails } = await request.json();
+        const { subject, body, userIds, additionalEmails, preheader, ctaLink, ctaText } = await request.json();
 
         if (!subject || !body) {
             return NextResponse.json({ error: 'Subject and body are required' }, { status: 400 });
@@ -84,23 +85,32 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No valid email addresses found' }, { status: 400 });
         }
 
+        // Build promotional email content
+        const htmlBody = promotionalTemplate({
+            subject,
+            preheader,
+            content: body,
+            ctaButton: ctaLink ? {
+                href: ctaLink,
+                text: ctaText || 'Learn More',
+            } : null,
+            footerText: preheader || 'You received this email because you are subscribed to Spinr LMS updates.',
+        });
+
         // Send individual emails with delay to respect rate limits
         let sentCount = 0;
         let failedCount = 0;
-
-        // Resend free tier: 100 emails/day, 2 emails/second rate limit
-        // Add 550ms delay between each email to stay under limit (550ms = ~1.8/sec)
-        const EMAIL_DELAY_MS = 550;
 
         for (let i = 0; i < emails.length; i++) {
             const email = emails[i];
 
             try {
                 const result = await sendEmailWithRetry(resend, {
-                    from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
+                    from: EmailConfig.from,
+                    reply_to: EmailConfig.replyTo,
                     to: [email],
                     subject: subject,
-                    html: body,
+                    html: htmlBody,
                 });
 
                 if (result.error) {
@@ -116,7 +126,7 @@ export async function POST(request) {
 
             // Add delay between emails (except after the last one)
             if (i < emails.length - 1) {
-                await delay(EMAIL_DELAY_MS);
+                await delay(EmailConfig.rateLimit.delayBetweenEmails);
             }
         }
 

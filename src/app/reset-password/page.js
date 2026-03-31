@@ -31,9 +31,27 @@ export default function ResetPasswordPage() {
         setLoading(true);
         try {
             const { error } = await supabase.auth.updateUser({ password });
-            if (error) throw error;
+            if (error) {
+                // Check if error is due to invalid/expired recovery session
+                if (error.message?.includes('session') || error.message?.includes('token') || error.message?.includes('expired')) {
+                    toast.error('This password reset link has expired. Please request a new one.');
+                    router.push('/forgot-password');
+                } else {
+                    throw error;
+                }
+                return;
+            }
+
+            // Sign out all sessions after password change for security
+            await supabase.auth.signOut();
+
             setDone(true);
-            toast.success('Password updated successfully!');
+            toast.success('Password updated successfully! Please sign in with your new password.');
+
+            // Redirect to login after short delay
+            setTimeout(() => {
+                router.push('/login');
+            }, 2000);
         } catch (error) {
             toast.error(error.message || 'Failed to update password');
         } finally {
@@ -58,7 +76,7 @@ export default function ResetPasswordPage() {
                             </div>
                             <h1 className="text-2xl font-bold">{done ? 'Password Updated!' : 'Set New Password'}</h1>
                             <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">
-                                {done ? 'You can now sign in with your new password.' : 'Enter your new password below.'}
+                                {done ? 'Redirecting to sign in...' : 'Enter your new password below.'}
                             </p>
                         </div>
 
@@ -106,12 +124,9 @@ export default function ResetPasswordPage() {
                                 </button>
                             </form>
                         ) : (
-                            <Link
-                                href="/login"
-                                className="flex items-center justify-center w-full bg-[hsl(var(--primary))] text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition-opacity touch-target text-base"
-                            >
-                                Go to Sign In
-                            </Link>
+                            <div className="text-center py-4">
+                                <div className="animate-pulse text-[hsl(var(--primary))]">Redirecting...</div>
+                            </div>
                         )}
                     </div>
                 </div>

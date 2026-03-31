@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, BookOpen, Users, FileCheck, ArrowLeft, LogOut, Mail, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, FileCheck, ArrowLeft, LogOut, Mail, MessageSquare, FileText } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [lmsUser, setLmsUser] = useState(null);
@@ -40,6 +40,7 @@ export default function AdminLayout({ children }) {
         { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'Compliance', href: '/admin/compliance', icon: FileCheck },
         { name: 'Email', href: '/admin/emails', icon: Mail },
+        { name: 'Templates', href: '/admin/email-templates', icon: FileText },
         { name: 'SMS', href: '/admin/sms', icon: MessageSquare },
     ];
 

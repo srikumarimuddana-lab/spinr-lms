@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { courseInvitationTemplate, EmailConfig } from '@/lib/email';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -71,36 +72,27 @@ export async function POST(request) {
             }
         }
 
-        const courseInfo = courseTitle ? `<h3 style="color: #2563eb;">${courseTitle}</h3>` : '';
-        const descriptionInfo = courseDescription ? `<p>${courseDescription}</p>` : '';
-        const defaultMessage = customMessage || 'We invite you to start your training with us.';
-
-        const htmlBody = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Welcome to Spinr LMS!</h2>
-                <p>${defaultMessage}</p>
-                ${courseInfo}
-                ${descriptionInfo}
-                <p>Please sign up to begin your training:</p>
-                <p><a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://spinrlms.com'}/signup" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 10px;">Sign Up Now</a></p>
-                <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automatic email from Spinr LMS.</p>
-            </div>
-        `;
+        const signupLink = `${EmailConfig.baseUrl}/signup`;
 
         // Send individual emails with delay to respect rate limits
         let sentCount = 0;
         let failedCount = 0;
 
-        // Resend free tier: 100 emails/day, 2 emails/second rate limit
-        // Add 550ms delay between each email to stay under limit (550ms = ~1.8/sec)
-        const EMAIL_DELAY_MS = 550;
-
         for (let i = 0; i < emailList.length; i++) {
             const email = emailList[i];
 
+            const htmlBody = courseInvitationTemplate({
+                userName: email.split('@')[0], // Use part before @ as name
+                courseTitle,
+                courseDescription,
+                customMessage,
+                signupLink,
+            });
+
             try {
                 const result = await sendEmailWithRetry(resend, {
-                    from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <noreply@training.spinr.ca>',
+                    from: EmailConfig.from,
+                    reply_to: EmailConfig.replyTo,
                     to: [email],
                     subject: courseTitle ? `Invitation: ${courseTitle}` : 'Invitation to Spinr LMS',
                     html: htmlBody,
@@ -119,7 +111,7 @@ export async function POST(request) {
 
             // Add delay between emails (except after the last one)
             if (i < emailList.length - 1) {
-                await delay(EMAIL_DELAY_MS);
+                await delay(EmailConfig.rateLimit.delayBetweenEmails);
             }
         }
 

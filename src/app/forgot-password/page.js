@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,14 +12,29 @@ export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [sent, setSent] = useState(false);
+    const [origin, setOrigin] = useState('');
+    const searchParams = useSearchParams();
     const supabase = createClient();
+
+    // Get origin client-side to avoid SSR issues
+    useEffect(() => {
+        setOrigin(window.location.origin);
+    }, []);
+
+    // Handle error from callback redirect
+    useEffect(() => {
+        const error = searchParams.get('error');
+        if (error) {
+            toast.error(decodeURIComponent(error));
+        }
+    }, [searchParams]);
 
     const handleReset = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+                redirectTo: `${origin}/auth/callback`,
             });
             if (error) throw error;
             setSent(true);

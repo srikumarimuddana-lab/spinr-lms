@@ -201,7 +201,10 @@ async function sendDriverEmail(supabase, driver, messageType, template, subject,
     const processedBody = body
       .replace(/\{\{name\}\}/gi, driver.full_name || 'Driver')
       .replace(/\{\{email\}\}/gi, driver.email)
-      .replace(/\{\{signupUrl\}\}/gi, `${siteUrl}/signup`);
+      .replace(/\{\{signupLink\}\}/gi, `${siteUrl}/signup`)
+      .replace(/\{\{dashboardLink\}\}/gi, `${siteUrl}/dashboard`)
+      .replace(/\{\{signupUrl\}\}/gi, `${siteUrl}/signup`)
+      .replace(/\{\{loginUrl\}\}/gi, `${siteUrl}/login`);
     
     const { data, error } = await resend.emails.send({
       from: process.env.EMAIL_FROM_ADDRESS || 'Spinr Training <training@spinr.ca>',
@@ -225,8 +228,9 @@ async function sendDriverEmail(supabase, driver, messageType, template, subject,
       variables: {
         userName: driver.full_name || 'Driver',
         email: driver.email,
-        signupUrl: `${siteUrl}/signup`,
-        dashboardUrl: `${siteUrl}/dashboard`,
+        signupLink: `${siteUrl}/signup`,
+        dashboardLink: `${siteUrl}/dashboard`,
+        courseTitle: 'Spinr Driver Training',
         courseName: 'Spinr Driver Training',
       },
     });
@@ -272,6 +276,8 @@ async function sendDriverSMS(supabase, driver, messageType, message, sentBy) {
     // Replace variables
     smsMessage = smsMessage
       .replace(/\{\{name\}\}/gi, driver.full_name || 'Driver')
+      .replace(/\{\{signupLink\}\}/gi, `${siteUrl}/signup`)
+      .replace(/\{\{dashboardLink\}\}/gi, `${siteUrl}/dashboard`)
       .replace(/\{\{signupUrl\}\}/gi, `${siteUrl}/signup`)
       .replace(/\{\{loginUrl\}\}/gi, `${siteUrl}/login`);
   }

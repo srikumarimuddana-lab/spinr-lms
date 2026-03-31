@@ -115,6 +115,7 @@ export async function POST(request) {
                 userName: driver.full_name || 'Driver',
                 signupLink: `${siteUrl}/signup`,
                 dashboardLink: `${siteUrl}/dashboard`,
+                courseTitle: 'Spinr Driver Training',
                 courseName: 'Spinr Driver Training',
               },
             });

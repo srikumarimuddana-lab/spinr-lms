@@ -553,20 +553,20 @@ function CommunicateModal({ driverIds, groupName, onClose, onSuccess }) {
                 subject: 'Complete Your Spinr Driver Training',
                 body: `<p>Hi {{name}},</p>
 <p>You're invited to complete your Spinr Driver Training! This training is required for all Spinr-approved drivers.</p>
-<p><a href="{{signupUrl}}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Start Training</a></p>
+<p><a href="{{signupLink}}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Start Training</a></p>
 <p>Best regards,<br>The Spinr Team</p>`,
             },
-            sms: 'Hi {{name}}! Complete your Spinr Driver Training to stay active. Sign up: {{signupUrl}} - Spinr Team',
+            sms: 'Hi {{name}}! Complete your Spinr Driver Training to stay active. Sign up: {{signupLink}} - Spinr Team',
         },
         reminder: {
             email: {
                 subject: 'Reminder: Complete Your Spinr Training',
                 body: `<p>Hi {{name}},</p>
 <p>This is a friendly reminder to complete your Spinr Driver Training.</p>
-<p><a href="{{loginUrl}}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Continue Training</a></p>
+<p><a href="{{dashboardLink}}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block;">Continue Training</a></p>
 <p>Best regards,<br>The Spinr Team</p>`,
             },
-            sms: 'Hi {{name}}! Reminder: Complete your Spinr training soon. Log in: {{loginUrl}} - Spinr Team',
+            sms: 'Hi {{name}}! Reminder: Complete your Spinr training soon. Log in: {{dashboardLink}} - Spinr Team',
         },
     };
 
@@ -703,7 +703,7 @@ function CommunicateModal({ driverIds, groupName, onClose, onSuccess }) {
                                     placeholder="Email body..."
                                 />
                                 <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                                    Variables: {'{{name}}'}, {'{{email}}'}, {'{{signupUrl}}'}, {'{{loginUrl}}'}
+                                    Variables: {'{{name}}'}, {'{{email}}'}, {'{{signupLink}}'}, {'{{dashboardLink}}'}
                                 </p>
                             </div>
                         </div>
@@ -724,7 +724,7 @@ function CommunicateModal({ driverIds, groupName, onClose, onSuccess }) {
                                 placeholder="SMS message..."
                             />
                             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                                Variables: {'{{name}}'}, {'{{signupUrl}}'}, {'{{loginUrl}}'}
+                                Variables: {'{{name}}'}, {'{{signupLink}}'}, {'{{dashboardLink}}'}
                             </p>
                         </div>
                     )}

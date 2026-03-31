@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
     Upload, Users, Search, Filter, Mail, MessageSquare, Send,
     ChevronDown, ChevronUp, CheckCircle, Clock, XCircle, AlertCircle,
-    RefreshCw, Download, UserCheck, UserX, Bell, Car, Edit, Trash2, X, MapPin
+    RefreshCw, Download, UserCheck, UserX, Bell, Car, Edit, Trash2, X, MapPin, Link2
 } from 'lucide-react';
 
 export default function AdminDriversPage() {
@@ -25,9 +25,33 @@ export default function AdminDriversPage() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingDriver, setEditingDriver] = useState(null);
     const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+    const [syncing, setSyncing] = useState(false);
     const fileInputRef = useRef(null);
 
     useEffect(() => { loadDrivers(); }, [selectedGroup, selectedCity, search, pagination.page]);
+
+    async function syncWithLMS() {
+        setSyncing(true);
+        try {
+            const response = await fetch('/api/drivers/sync', {
+                method: 'POST',
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                const { synced, notRegistered, alreadyLinked } = result.data;
+                toast.success(
+                    `Sync complete: ${synced} updated, ${alreadyLinked} already linked, ${notRegistered} not registered`
+                );
+                loadDrivers();
+            } else {
+                toast.error(result.error || 'Sync failed');
+            }
+        } catch (error) {
+            toast.error('Sync failed: ' + error.message);
+        }
+        setSyncing(false);
+    }
 
     async function loadDrivers() {
         setLoading(true);
@@ -138,6 +162,19 @@ export default function AdminDriversPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h1 className="text-xl sm:text-2xl font-bold">Driver Management</h1>
                 <div className="flex gap-2">
+                    <button
+                        onClick={syncWithLMS}
+                        disabled={syncing}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-xl text-sm font-medium hover:bg-[hsl(var(--secondary))] transition-colors disabled:opacity-50"
+                        title="Sync driver records with LMS users to update registration status"
+                    >
+                        {syncing ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <Link2 className="w-4 h-4" />
+                        )}
+                        {syncing ? 'Syncing...' : 'Sync with LMS'}
+                    </button>
                     <input
                         type="file"
                         ref={fileInputRef}

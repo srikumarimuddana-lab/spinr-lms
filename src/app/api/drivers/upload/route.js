@@ -81,26 +81,70 @@ export async function POST(request) {
     // Process each driver
     for (const driver of drivers) {
       try {
-        // Check if driver exists by email
+        // Check if driver's email exists in lms_users (already registered)
+        const { data: lmsUser } = await supabase
+          .from('lms_users')
+          .select('id, email')
+          .eq('email', driver.email.toLowerCase())
+          .single();
+
+        // Determine training status based on LMS registration
+        let trainingStatus = 'not_invited';
+        let lmsUserId = null;
+
+        if (lmsUser) {
+          lmsUserId = lmsUser.id;
+          
+          // Check enrollment status to determine training progress
+          const { data: enrollment } = await supabase
+            .from('enrollments')
+            .select('status')
+            .eq('user_id', lmsUser.id)
+            .order('enrolled_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (enrollment) {
+            if (enrollment.status === 'completed') {
+              trainingStatus = 'completed';
+            } else if (enrollment.status === 'in_progress') {
+              trainingStatus = 'in_progress';
+            } else {
+              trainingStatus = 'registered';
+            }
+          } else {
+            // User registered but not enrolled in any course
+            trainingStatus = 'registered';
+          }
+        }
+
+        // Check if driver record already exists
         const { data: existing } = await supabase
           .from('driver_records')
-          .select('id, training_status')
-          .eq('email', driver.email)
+          .select('id, training_status, lms_user_id')
+          .eq('email', driver.email.toLowerCase())
           .single();
 
         if (existing) {
-          // Update existing record (preserve training_status if already registered/completed)
+          // Update existing record
           const updateData = {
             ...driver,
+            email: driver.email.toLowerCase(),
             source_file: fileName,
             source_sheet: sheetName,
             uploaded_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
-          // Don't override training status for registered/completed drivers
-          if (['registered', 'in_progress', 'completed'].includes(existing.training_status)) {
-            delete updateData.training_status;
+          // Link to LMS user if found
+          if (lmsUserId && !existing.lms_user_id) {
+            updateData.lms_user_id = lmsUserId;
+            updateData.training_status = trainingStatus;
+          } else if (!['registered', 'in_progress', 'completed'].includes(existing.training_status)) {
+            // Only update status if not already in a registered/completed state
+            if (lmsUserId) {
+              updateData.training_status = trainingStatus;
+            }
           }
 
           const { error: updateError } = await supabase
@@ -120,9 +164,11 @@ export async function POST(request) {
             .from('driver_records')
             .insert({
               ...driver,
+              email: driver.email.toLowerCase(),
               source_file: fileName,
               source_sheet: sheetName,
-              training_status: 'not_invited',
+              lms_user_id: lmsUserId,
+              training_status: trainingStatus,
             });
 
           if (insertError) {

@@ -1,41 +1,5 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { trainingReminderTemplate, EmailConfig } from '@/lib/email';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Delay helper to respect rate limits (Resend allows 2 requests/second)
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Send email with exponential backoff for rate limits
-async function sendEmailWithRetry(resend, emailConfig, maxRetries = 3) {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            const { data, error } = await resend.emails.send(emailConfig);
-
-            if (error) {
-                // Check for rate limit error (429)
-                if (error.statusCode === 429) {
-                    const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-                    console.log(`Rate limit hit for ${emailConfig.to}, waiting ${waitTime}ms before retry...`);
-                    await delay(waitTime);
-                    continue;
-                }
-                return { error, data };
-            }
-            return { error: null, data };
-        } catch (err) {
-            if (attempt < maxRetries) {
-                const waitTime = Math.pow(2, attempt) * 1000;
-                console.log(`Error sending to ${emailConfig.to}, retrying in ${waitTime}ms...`);
-                await delay(waitTime);
-            } else {
-                return { error: err, data: null };
-            }
-        }
-    }
-    return { error: new Error('Max retries exceeded'), data: null };
-}
+import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
 
 export async function POST(request) {
     try {
@@ -73,59 +37,45 @@ export async function POST(request) {
             if (course) courseTitle = course.title;
         }
 
-        const dashboardLink = `${EmailConfig.baseUrl}/dashboard`;
+        const dashboardLink = process.env.NEXT_PUBLIC_SITE_URL || '/dashboard';
 
-        // Send individual emails with delay to respect rate limits
-        let sentCount = 0;
-        let failedCount = 0;
-
-        for (const user of users) {
-            const email = user.email;
-            if (!email) continue;
-
-            const htmlBody = trainingReminderTemplate({
-                userName: user.full_name,
+        // Prepare recipients with per-user variables
+        const recipients = users.map(u => u.email).filter(Boolean);
+        const variables = (email, index) => {
+            const user = users[index];
+            return {
+                userName: user?.full_name || email.split('@')[0],
                 courseTitle,
-                customMessage,
                 dashboardLink,
-            });
+                ...(customMessage ? { customMessage } : {}),
+            };
+        };
 
-            try {
-                const result = await sendEmailWithRetry(resend, {
-                    from: EmailConfig.from,
-                    reply_to: EmailConfig.replyTo,
-                    to: [email],
-                    subject: courseTitle ? `Reminder: ${courseTitle}` : 'Training Reminder - Action Required',
-                    html: htmlBody,
-                });
+        // Send using database template
+        const result = await sendBulkEmails({
+            recipients,
+            templateType: 'training_reminder',
+            variables,
+        });
 
-                if (result.error) {
-                    console.error('Resend error for', email, ':', result.error);
-                    failedCount++;
-                } else {
-                    sentCount++;
-                }
-            } catch (err) {
-                console.error('Exception sending to', email, ':', err);
-                failedCount++;
-            }
-
-            // Add delay between emails (except after the last one)
-            if (users.indexOf(user) < users.length - 1) {
-                await delay(EmailConfig.rateLimit.delayBetweenEmails);
-            }
+        if (result.error) {
+            console.error('Email sending error:', result.error);
+            return NextResponse.json({ error: 'Failed to send reminder emails' }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
-            sentCount,
-            failedCount,
-            total: users.length,
-            message: `Sent reminder emails to ${sentCount} users${failedCount > 0 ? ` (${failedCount} failed)` : ''}`
+            ...result,
+            message: `Sent reminder emails to ${result.sentCount} users${result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''}`
         });
 
     } catch (error) {
         console.error('Reminder email error:', error);
         return NextResponse.json({ error: 'Failed to send reminder email' }, { status: 500 });
     }
+}
+
+export async function GET() {
+    const templates = await getAvailableTemplates();
+    return NextResponse.json({ templates });
 }

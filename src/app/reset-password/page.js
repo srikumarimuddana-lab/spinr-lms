@@ -1,21 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { KeyRound, Eye, EyeOff } from 'lucide-react';
 
 export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ResetPasswordContent />
+        </Suspense>
+    );
+}
+
+function ResetPasswordContent() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
+    const [codeExchanged, setCodeExchanged] = useState(false);
+    const [isExchanging, setIsExchanging] = useState(true);
+    const searchParams = useSearchParams();
     const router = useRouter();
     const supabase = createClient();
+
+    const code = searchParams.get('code');
+
+    // Exchange the recovery code for a session on mount
+    useEffect(() => {
+        if (!code) {
+            toast.error('Invalid or missing reset code. Please request a new password reset.');
+            setIsExchanging(false);
+            return;
+        }
+
+        const exchangeCode = async () => {
+            try {
+                const { error } = await supabase.auth.exchangeCodeForSession(code);
+                if (error) {
+                    if (error.message?.includes('expired') || error.message?.includes('invalid')) {
+                        toast.error('This password reset link has expired. Please request a new one.');
+                    } else {
+                        toast.error(error.message || 'Invalid reset link');
+                    }
+                    router.push('/forgot-password');
+                    return;
+                }
+                setCodeExchanged(true);
+            } catch (err) {
+                toast.error('Failed to validate reset link');
+                router.push('/forgot-password');
+            } finally {
+                setIsExchanging(false);
+            }
+        };
+
+        exchangeCode();
+    }, [code]);
 
     const handleReset = async (e) => {
         e.preventDefault();
@@ -31,16 +76,7 @@ export default function ResetPasswordPage() {
         setLoading(true);
         try {
             const { error } = await supabase.auth.updateUser({ password });
-            if (error) {
-                // Check if error is due to invalid/expired recovery session
-                if (error.message?.includes('session') || error.message?.includes('token') || error.message?.includes('expired')) {
-                    toast.error('This password reset link has expired. Please request a new one.');
-                    router.push('/forgot-password');
-                } else {
-                    throw error;
-                }
-                return;
-            }
+            if (error) throw error;
 
             // Sign out all sessions after password change for security
             await supabase.auth.signOut();
@@ -58,6 +94,29 @@ export default function ResetPasswordPage() {
             setLoading(false);
         }
     };
+
+    // Show loading state while exchanging code
+    if (isExchanging) {
+        return (
+            <div className="min-h-screen flex flex-col bg-[hsl(var(--secondary))]">
+                <div className="p-4 sm:p-6">
+                    <Link href="/" className="inline-flex items-center gap-2">
+                        <Image src="/logo.png" alt="Spinr" width={100} height={33} className="h-9 w-auto" priority />
+                    </Link>
+                </div>
+                <div className="flex-1 flex items-center justify-center px-4 pb-8">
+                    <div className="text-center">
+                        <div className="animate-pulse text-[hsl(var(--primary))] text-lg">Validating reset link...</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Don't render form if code exchange failed
+    if (!codeExchanged) {
+        return null;
+    }
 
     return (
         <div className="min-h-screen flex flex-col bg-[hsl(var(--secondary))]">

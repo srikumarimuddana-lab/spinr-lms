@@ -15,22 +15,21 @@ export async function GET(request) {
     }
 
     if (code) {
+        // Check if this is a password recovery flow BEFORE exchanging the code
+        const isRecovery = type === 'recovery' || request.url.includes('recovery');
+
+        if (isRecovery) {
+            // For recovery flows, redirect to reset-password page with the code
+            // The reset-password page will handle the session exchange when user submits new password
+            return NextResponse.redirect(`${origin}/reset-password?code=${code}`);
+        }
+
+        // For non-recovery flows (email verification, magic link, etc.), exchange code and redirect
         const { createClient } = await import('@/lib/supabase-server');
         const supabase = await createClient();
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error) {
-            // Check if this is a password recovery flow via:
-            // 1. The `type` query param (not always present)
-            // 2. The session's AMR (authentication methods reference) — most reliable
-            const isRecovery =
-                type === 'recovery' ||
-                request.url.includes('recovery') ||
-                data?.session?.amr?.some((entry) => entry.method === 'recovery');
-
-            if (isRecovery) {
-                return NextResponse.redirect(`${origin}/reset-password`);
-            }
             return NextResponse.redirect(`${origin}${next}`);
         }
 

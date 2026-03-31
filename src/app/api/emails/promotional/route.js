@@ -1,45 +1,9 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-import { promotionalTemplate, EmailConfig } from '@/lib/email';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Delay helper to respect rate limits (Resend allows 2 requests/second)
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Send email with exponential backoff for rate limits
-async function sendEmailWithRetry(resend, emailConfig, maxRetries = 3) {
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-            const { data, error } = await resend.emails.send(emailConfig);
-
-            if (error) {
-                // Check for rate limit error (429)
-                if (error.statusCode === 429) {
-                    const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-                    console.log(`Rate limit hit for ${emailConfig.to}, waiting ${waitTime}ms before retry...`);
-                    await delay(waitTime);
-                    continue;
-                }
-                return { error, data };
-            }
-            return { error: null, data };
-        } catch (err) {
-            if (attempt < maxRetries) {
-                const waitTime = Math.pow(2, attempt) * 1000;
-                console.log(`Error sending to ${emailConfig.to}, retrying in ${waitTime}ms...`);
-                await delay(waitTime);
-            } else {
-                return { error: err, data: null };
-            }
-        }
-    }
-    return { error: new Error('Max retries exceeded'), data: null };
-}
+import { sendBulkEmails, getAvailableTemplates } from '@/lib/email/sender';
 
 export async function POST(request) {
     try {
-        const { subject, body, userIds, additionalEmails, preheader, ctaLink, ctaText } = await request.json();
+        const { subject, body, userIds, additionalEmails, preheader, ctaLink, ctaText, templateId } = await request.json();
 
         if (!subject || !body) {
             return NextResponse.json({ error: 'Subject and body are required' }, { status: 400 });
@@ -58,7 +22,7 @@ export async function POST(request) {
         if (userIds && Array.isArray(userIds) && userIds.length > 0) {
             const { data: users } = await supabase
                 .from('lms_users')
-                .select('email')
+                .select('email, full_name')
                 .in('id', userIds);
 
             if (users) {
@@ -85,61 +49,71 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No valid email addresses found' }, { status: 400 });
         }
 
-        // Build promotional email content
-        const htmlBody = promotionalTemplate({
-            subject,
-            preheader,
-            content: body,
-            ctaButton: ctaLink ? {
-                href: ctaLink,
-                text: ctaText || 'Learn More',
-            } : null,
-            footerText: preheader || 'You received this email because you are subscribed to Spinr LMS updates.',
-        });
+        // If templateId provided, use database template with variable substitution
+        if (templateId) {
+            const { createServiceClient } = await import('@/lib/supabase-server');
+            const serviceClient = await createServiceClient();
 
-        // Send individual emails with delay to respect rate limits
-        let sentCount = 0;
-        let failedCount = 0;
+            const { data: template } = await serviceClient
+                .from('email_templates')
+                .select('*')
+                .eq('id', templateId)
+                .single();
 
-        for (let i = 0; i < emails.length; i++) {
-            const email = emails[i];
-
-            try {
-                const result = await sendEmailWithRetry(resend, {
-                    from: EmailConfig.from,
-                    reply_to: EmailConfig.replyTo,
-                    to: [email],
-                    subject: subject,
-                    html: htmlBody,
+            if (template) {
+                // Send using the template from database
+                const result = await sendBulkEmails({
+                    recipients: emails,
+                    templateType: template.type,
+                    variables: (email, index) => ({
+                        subject,
+                        preheader: preheader || '',
+                        content: body,
+                        ctaButton: ctaLink ? { href: ctaLink, text: ctaText || 'Learn More' } : null,
+                    }),
                 });
 
                 if (result.error) {
-                    console.error('Resend error for', email, ':', result.error);
-                    failedCount++;
-                } else {
-                    sentCount++;
+                    return NextResponse.json({ error: 'Failed to send promotional emails' }, { status: 500 });
                 }
-            } catch (err) {
-                console.error('Exception sending to', email, ':', err);
-                failedCount++;
-            }
 
-            // Add delay between emails (except after the last one)
-            if (i < emails.length - 1) {
-                await delay(EmailConfig.rateLimit.delayBetweenEmails);
+                return NextResponse.json({
+                    success: true,
+                    ...result,
+                    message: `Sent promotional email to ${result.sentCount} recipients${result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''}`
+                });
             }
+        }
+
+        // Fallback: Send using promotional template type (will use database template)
+        const result = await sendBulkEmails({
+            recipients: emails,
+            templateType: 'promotional',
+            variables: (email) => ({
+                subject,
+                preheader: preheader || '',
+                content: body,
+                ctaButton: ctaLink ? { href: ctaLink, text: ctaText || 'Learn More' } : null,
+            }),
+        });
+
+        if (result.error) {
+            return NextResponse.json({ error: 'Failed to send promotional emails' }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
-            sentCount,
-            failedCount,
-            total: emails.length,
-            message: `Sent promotional email to ${sentCount} recipients${failedCount > 0 ? ` (${failedCount} failed)` : ''}`
+            ...result,
+            message: `Sent promotional email to ${result.sentCount} recipients${result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''}`
         });
 
     } catch (error) {
         console.error('Promotional email error:', error);
         return NextResponse.json({ error: 'Failed to send promotional email' }, { status: 500 });
     }
+}
+
+export async function GET() {
+    const templates = await getAvailableTemplates();
+    return NextResponse.json({ templates });
 }

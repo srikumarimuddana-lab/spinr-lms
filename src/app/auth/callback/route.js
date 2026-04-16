@@ -50,28 +50,27 @@ export async function GET(request) {
     }
 
     if (code) {
-        // Check if this is a password recovery flow BEFORE exchanging the code
         const isRecovery = type === 'recovery' || request.url.includes('recovery');
 
-        if (isRecovery) {
-            // For recovery flows, redirect to reset-password page with the code
-            // The reset-password page will handle the session exchange when user submits new password
-            return NextResponse.redirect(`${origin}/reset-password?code=${code}`);
-        }
-
-        // For non-recovery flows (email verification, magic link, etc.), exchange code and redirect
+        // Exchange the code server-side so the PKCE verifier cookie set by the browser
+        // is available to complete the flow. Doing this on the client fails under strict
+        // browser cookie policies or when the reset link opens a fresh tab/context.
         const { createClient } = await import('@/lib/supabase-server');
         const supabase = await createClient();
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error) {
+            if (isRecovery) {
+                return NextResponse.redirect(`${origin}/reset-password`);
+            }
             return NextResponse.redirect(`${origin}${next}`);
         }
 
-        // Handle specific exchange errors
-        if (error.message?.includes('expired') || error.message?.includes('invalid')) {
-            return NextResponse.redirect(`${origin}/forgot-password?error=${encodeURIComponent('This password reset link has expired. Please request a new one.')}`);
-        }
+        const redirectBase = isRecovery ? '/forgot-password' : '/login';
+        const message = error.message?.includes('expired') || error.message?.includes('invalid')
+            ? 'This password reset link has expired or is invalid. Please request a new one.'
+            : 'Could not validate this link. Please request a new one from the same browser you started from.';
+        return NextResponse.redirect(`${origin}${redirectBase}?error=${encodeURIComponent(message)}`);
     }
 
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);

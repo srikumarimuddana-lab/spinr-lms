@@ -36,25 +36,12 @@ export async function middleware(request) {
         '/forgot-password',
         '/auth/callback',
         '/verify',
-        '/reset-password',  // Reset password is handled specially - requires code query param
+        '/reset-password',
         // SMS webhook endpoints (Twilio needs unauthenticated access)
         '/api/sms/incoming',
         '/api/sms/status',
     ];
     const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname.startsWith(path));
-
-    // Special handling for reset-password - requires a code query parameter
-    if (request.nextUrl.pathname === '/reset-password') {
-        const hasCode = request.nextUrl.searchParams.has('code');
-        if (!hasCode) {
-            // Redirect to forgot-password if no code provided
-            const url = request.nextUrl.clone();
-            url.pathname = '/forgot-password';
-            return NextResponse.redirect(url);
-        }
-        // Allow access with code - the page will validate the code
-        return supabaseResponse;
-    }
 
     if (!user && !isPublicPath && request.nextUrl.pathname !== '/') {
         // For API routes, return 401 instead of redirecting

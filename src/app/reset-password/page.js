@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,45 +22,33 @@ function ResetPasswordContent() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(false);
-    const [codeExchanged, setCodeExchanged] = useState(false);
-    const [isExchanging, setIsExchanging] = useState(true);
-    const searchParams = useSearchParams();
+    const [sessionReady, setSessionReady] = useState(false);
+    const [isChecking, setIsChecking] = useState(true);
     const router = useRouter();
     const supabase = createClient();
 
-    const code = searchParams.get('code');
-
-    // Exchange the recovery code for a session on mount
+    // The code exchange happens server-side in /auth/callback, which establishes
+    // a recovery session via cookies. Here we just verify that session exists.
     useEffect(() => {
-        if (!code) {
-            toast.error('Invalid or missing reset code. Please request a new password reset.');
-            setIsExchanging(false);
-            return;
-        }
-
-        const exchangeCode = async () => {
+        const checkSession = async () => {
             try {
-                const { error } = await supabase.auth.exchangeCodeForSession(code);
-                if (error) {
-                    if (error.message?.includes('expired') || error.message?.includes('invalid')) {
-                        toast.error('This password reset link has expired. Please request a new one.');
-                    } else {
-                        toast.error(error.message || 'Invalid reset link');
-                    }
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    toast.error('Your reset link is invalid or has expired. Please request a new one.');
                     router.push('/forgot-password');
                     return;
                 }
-                setCodeExchanged(true);
+                setSessionReady(true);
             } catch (err) {
                 toast.error('Failed to validate reset link');
                 router.push('/forgot-password');
             } finally {
-                setIsExchanging(false);
+                setIsChecking(false);
             }
         };
 
-        exchangeCode();
-    }, [code]);
+        checkSession();
+    }, []);
 
     const handleReset = async (e) => {
         e.preventDefault();
@@ -95,8 +83,7 @@ function ResetPasswordContent() {
         }
     };
 
-    // Show loading state while exchanging code
-    if (isExchanging) {
+    if (isChecking) {
         return (
             <div className="min-h-screen flex flex-col bg-[hsl(var(--secondary))]">
                 <div className="p-4 sm:p-6">
@@ -113,8 +100,7 @@ function ResetPasswordContent() {
         );
     }
 
-    // Don't render form if code exchange failed
-    if (!codeExchanged) {
+    if (!sessionReady) {
         return null;
     }
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { toast } from 'sonner';
-import { Mail, Send, Users, UserPlus, Clock, CheckCircle, Loader2, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Download, FileSpreadsheet } from 'lucide-react';
+import { Mail, Send, Users, UserPlus, Clock, CheckCircle, Loader2, Bold, Italic, Underline, List, ListOrdered, Image as ImageIcon, Link as LinkIcon, Download, FileSpreadsheet, Tag, Eye, X } from 'lucide-react';
 
 function RichTextEditor({ value, onChange, placeholder }) {
     const editorRef = useRef(null);
@@ -132,6 +132,74 @@ export default function AdminEmailsPage() {
     // Export state
     const [exportFilter, setExportFilter] = useState('all');
     const [exporting, setExporting] = useState(false);
+
+    // Rider promotions state
+    const COUPON_PRESETS = [
+        { label: 'SPINR75 — 75% off', code: 'SPINR75', discount: 75 },
+        { label: 'SPINR50 — 50% off', code: 'SPINR50', discount: 50 },
+        { label: 'Custom', code: '', discount: '' },
+    ];
+    const [riderPreset, setRiderPreset] = useState(COUPON_PRESETS[0].label);
+    const [riderCouponCode, setRiderCouponCode] = useState('SPINR75');
+    const [riderDiscount, setRiderDiscount] = useState(75);
+    const [riderExpiry, setRiderExpiry] = useState('');
+    const [riderMaxRides, setRiderMaxRides] = useState('');
+    const [riderAppUrl, setRiderAppUrl] = useState('');
+    const [riderRecipients, setRiderRecipients] = useState('');
+    const [showRiderPreview, setShowRiderPreview] = useState(false);
+
+    function applyPreset(label) {
+        setRiderPreset(label);
+        const preset = COUPON_PRESETS.find(p => p.label === label);
+        if (preset && preset.code) {
+            setRiderCouponCode(preset.code);
+            setRiderDiscount(preset.discount);
+        }
+    }
+
+    function countRiderRecipients() {
+        return riderRecipients
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.includes('@'))
+            .length;
+    }
+
+    async function sendRiderPromotion() {
+        if (!riderCouponCode.trim() || !riderDiscount || !riderRecipients.trim()) {
+            toast.error('Please fill in coupon code, discount %, and recipients');
+            return;
+        }
+        if (countRiderRecipients() === 0) {
+            toast.error('No valid email addresses found in the recipients box');
+            return;
+        }
+        setSending(true);
+        try {
+            const res = await fetch('/api/emails/rider-promotions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    couponCode: riderCouponCode.trim().toUpperCase(),
+                    discountPercent: riderDiscount,
+                    expiryDate: riderExpiry || null,
+                    maxRides: riderMaxRides || null,
+                    appUrl: riderAppUrl || null,
+                    recipients: riderRecipients,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message || `Sent to ${data.sentCount} riders`);
+                setRiderRecipients('');
+            } else {
+                toast.error(data.error || 'Failed to send');
+            }
+        } catch {
+            toast.error('Failed to send rider promotion emails');
+        }
+        setSending(false);
+    }
 
     const supabase = createClient();
 
@@ -398,6 +466,7 @@ export default function AdminEmailsPage() {
     }
 
     const tabs = [
+        { id: 'rider-promotions', label: 'Rider Promotions', icon: Tag },
         { id: 'promotional', label: 'Promotional', icon: Mail },
         { id: 'reminders', label: 'Reminders', icon: Clock },
         { id: 'invitations', label: 'Invitations', icon: UserPlus },
@@ -433,6 +502,195 @@ export default function AdminEmailsPage() {
 
             {/* Tab Content */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
+
+                {/* Rider Promotions Tab */}
+                {activeTab === 'rider-promotions' && (
+                    <div className="space-y-5">
+                        <div>
+                            <h3 className="font-semibold mb-1">Send Rider Promotional Email</h3>
+                            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                                Send coupon codes to your riders (customers). Paste names and emails below — one per line.
+                            </p>
+                        </div>
+
+                        {/* Preset selector */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5">Coupon Preset</label>
+                            <div className="flex flex-wrap gap-2">
+                                {COUPON_PRESETS.map(preset => (
+                                    <button
+                                        key={preset.label}
+                                        type="button"
+                                        onClick={() => applyPreset(preset.label)}
+                                        className={`px-4 py-2 rounded-xl text-sm font-medium border-2 transition-colors ${
+                                            riderPreset === preset.label
+                                                ? 'border-green-500 bg-green-50 text-green-700'
+                                                : 'border-[hsl(var(--border))] hover:border-green-400 text-[hsl(var(--muted-foreground))]'
+                                        }`}
+                                    >
+                                        {preset.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Code + Discount row */}
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">Coupon Code</label>
+                                <input
+                                    type="text"
+                                    value={riderCouponCode}
+                                    onChange={(e) => { setRiderCouponCode(e.target.value.toUpperCase()); setRiderPreset('Custom'); }}
+                                    placeholder="e.g. SPINR75"
+                                    className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-mono uppercase"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">Discount %</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    value={riderDiscount}
+                                    onChange={(e) => { setRiderDiscount(e.target.value); setRiderPreset('Custom'); }}
+                                    placeholder="e.g. 75"
+                                    className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Expiry + Max rides + App URL */}
+                        <div className="grid sm:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">Expiry Date <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span></label>
+                                <input
+                                    type="date"
+                                    value={riderExpiry}
+                                    onChange={(e) => setRiderExpiry(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">Max Rides <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span></label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={riderMaxRides}
+                                    onChange={(e) => setRiderMaxRides(e.target.value)}
+                                    placeholder="e.g. 5"
+                                    className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1.5">App / Booking URL <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span></label>
+                                <input
+                                    type="url"
+                                    value={riderAppUrl}
+                                    onChange={(e) => setRiderAppUrl(e.target.value)}
+                                    placeholder="https://spinr.ca"
+                                    className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Recipients textarea */}
+                        <div>
+                            <label className="block text-sm font-medium mb-1.5">
+                                Riders (Name &amp; Email)
+                                <span className="text-[hsl(var(--muted-foreground))] font-normal ml-1">— one per line: <code className="bg-gray-100 px-1 rounded text-xs">Kiran, kiran@example.com</code></span>
+                            </label>
+                            <textarea
+                                value={riderRecipients}
+                                onChange={(e) => setRiderRecipients(e.target.value)}
+                                placeholder={"Kiran Muddana, kiran@example.com\nJohn Smith, john@example.com\nsarah@example.com"}
+                                rows={10}
+                                className="w-full px-4 py-3 rounded-xl border border-[hsl(var(--border))] bg-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm resize-y font-mono"
+                            />
+                            {riderRecipients.trim() && (
+                                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                                    {countRiderRecipients()} valid rider(s) detected
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Email preview panel */}
+                        {showRiderPreview && (
+                            <div className="border-2 border-green-200 rounded-xl overflow-hidden">
+                                <div className="bg-green-50 px-4 py-3 flex items-center justify-between border-b border-green-200">
+                                    <span className="text-sm font-semibold text-green-800">Email Preview</span>
+                                    <button onClick={() => setShowRiderPreview(false)} className="text-green-600 hover:text-green-800">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="bg-[#141414] p-4">
+                                    {/* Simplified preview matching the real email design */}
+                                    <div style={{ maxWidth: 560, margin: '0 auto', borderRadius: 16, overflow: 'hidden', fontFamily: 'system-ui,sans-serif' }}>
+                                        {/* Hero */}
+                                        <div style={{ background: '#000', padding: '28px 32px 24px' }}>
+                                            <p style={{ margin: '0 0 20px', color: '#fff', fontSize: 16, fontWeight: 800, letterSpacing: 3 }}>SPINR</p>
+                                            <h2 style={{ margin: '0 0 10px', color: '#86efac', fontSize: 32, fontWeight: 900, lineHeight: 1.15 }}>
+                                                Enjoy {riderDiscount || '??'}% off<br />your rides!
+                                            </h2>
+                                            <p style={{ margin: '0 0 20px', color: '#e5e7eb', fontSize: 14, lineHeight: 1.6 }}>
+                                                [Rider name], enjoy <strong style={{ color: '#86efac' }}>{riderDiscount || '??'}% off</strong>
+                                                {riderMaxRides ? ` on ${riderMaxRides} trips` : ''}.
+                                                {riderExpiry ? ` Valid until ${new Date(riderExpiry).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.` : ''}
+                                            </p>
+                                            <span style={{ display: 'inline-block', background: '#fff', color: '#000', padding: '10px 28px', borderRadius: 50, fontWeight: 800, fontSize: 14 }}>Book a Ride</span>
+                                        </div>
+                                        {/* Coupon box */}
+                                        <div style={{ background: '#000', padding: '0 32px 28px' }}>
+                                            <div style={{ border: '2px dashed #22c55e', borderRadius: 12, padding: '18px 20px', textAlign: 'center', background: 'linear-gradient(135deg,#052e16,#14532d)' }}>
+                                                <p style={{ margin: '0 0 4px', color: '#86efac', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 3 }}>Your Promo Code</p>
+                                                <p style={{ margin: 0, color: '#fff', fontSize: 28, fontWeight: 900, letterSpacing: 8, fontFamily: 'monospace' }}>
+                                                    {riderCouponCode || 'CODE'}
+                                                </p>
+                                                <p style={{ margin: '6px 0 0', color: '#6ee7b7', fontSize: 12 }}>{riderDiscount || '??'}% discount — apply at checkout</p>
+                                            </div>
+                                        </div>
+                                        {/* Features */}
+                                        <div style={{ background: '#111', padding: '28px 32px', color: '#9ca3af', fontSize: 13 }}>
+                                            <p style={{ margin: '0 0 4px', color: '#fff', fontSize: 18, fontWeight: 800 }}>Ride with Spinr, your way</p>
+                                            <p style={{ margin: '0 0 16px', fontSize: 12, lineHeight: 1.6 }}>From your first trip of the morning to your last trip of the night...</p>
+                                            {['🚗 Safe & reliable rides', '📍 Real-time tracking', '💰 Upfront, transparent pricing'].map(f => (
+                                                <p key={f} style={{ margin: '0 0 8px', color: '#d1fae5', fontSize: 12 }}>• {f}</p>
+                                            ))}
+                                        </div>
+                                        {/* Disclaimer */}
+                                        <div style={{ background: '#0a0a0a', padding: '16px 32px', borderRadius: '0 0 16px 16px' }}>
+                                            <p style={{ margin: 0, color: '#4b5563', fontSize: 10, lineHeight: 1.7 }}>
+                                                This promotion is only valid for riders who received this email directly from Spinr.
+                                                {riderExpiry ? ` Expires ${riderExpiry}.` : ''} Terms subject to change.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowRiderPreview(v => !v)}
+                                className="flex items-center gap-2 px-5 py-3 rounded-xl border-2 border-green-500 text-green-700 text-sm font-medium hover:bg-green-50 transition-colors"
+                            >
+                                <Eye className="w-4 h-4" />
+                                {showRiderPreview ? 'Hide Preview' : 'Preview Email'}
+                            </button>
+
+                            <button
+                                onClick={sendRiderPromotion}
+                                disabled={sending || !riderCouponCode.trim() || !riderDiscount || countRiderRecipients() === 0}
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                Send to {countRiderRecipients()} Rider{countRiderRecipients() !== 1 ? 's' : ''}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Promotional Tab */}
                 {activeTab === 'promotional' && (

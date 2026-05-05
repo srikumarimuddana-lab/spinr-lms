@@ -239,6 +239,49 @@ export async function sendBulkEmails({ recipients, templateType, variables }) {
 }
 
 /**
+ * Send bulk emails with custom per-recipient HTML (no DB template required)
+ *
+ * @param {Object} options
+ * @param {Array<{email: string, name?: string}>} options.recipients
+ * @param {string} options.subject
+ * @param {Function} options.htmlFn - Called with each recipient, returns HTML string
+ */
+export async function sendBulkEmailsDirect({ recipients, subject, htmlFn }) {
+    if (!recipients || recipients.length === 0) {
+        return { error: new Error('No valid recipients provided') };
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < recipients.length; i++) {
+        const recipient = recipients[i];
+        const html = htmlFn(recipient);
+
+        const result = await sendEmailWithRetry({
+            from: EmailConfig.from,
+            reply_to: EmailConfig.replyTo,
+            to: [recipient.email],
+            subject,
+            html,
+        });
+
+        if (result.error) {
+            console.error(`Failed to send to ${recipient.email}:`, result.error);
+            failedCount++;
+        } else {
+            sentCount++;
+        }
+
+        if (i < recipients.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, EmailConfig.rateLimit.delayBetweenEmails));
+        }
+    }
+
+    return { sentCount, failedCount, total: recipients.length };
+}
+
+/**
  * Get all available template types from database
  */
 export async function getAvailableTemplates() {

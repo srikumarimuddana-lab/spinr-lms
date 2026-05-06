@@ -51,12 +51,12 @@ export async function POST(request) {
             );
         }
 
-        // Personalised subject per rider — falls back if no name was provided
+        // Discount % at the start — most visible in inbox preview
         const subjectFor = (recipient) => {
             const firstName = (recipient.name || '').split(/\s+/)[0].trim();
             return firstName
-                ? `${firstName}, you've got a promo! ${discountPercent}% off your rides 🎁`
-                : `You've got a promo! ${discountPercent}% off your rides 🎁`;
+                ? `Claim it: ${discountPercent}% off your rides, ${firstName}`
+                : `Claim it: ${discountPercent}% off your rides on Spinr`;
         };
 
         const result = await sendBulkEmailsDirect({

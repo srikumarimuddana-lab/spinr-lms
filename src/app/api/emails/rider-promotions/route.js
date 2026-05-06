@@ -42,11 +42,21 @@ export async function POST(request) {
             );
         }
 
-        const subject = `You've got a promo from Spinr! ${discountPercent}% off your rides`;
+        // Personalised subject per rider — falls back if no name was provided
+        const subjectFor = (recipient) => {
+            const firstName = (recipient.name || '').split(/\s+/)[0].trim();
+            return firstName
+                ? `${firstName}, you've got a promo! ${discountPercent}% off your rides 🎁`
+                : `You've got a promo! ${discountPercent}% off your rides 🎁`;
+        };
 
         const result = await sendBulkEmailsDirect({
             recipients,
-            subject,
+            subject: subjectFor,
+            // Optional: dedicated promotions sender (verified domain in Resend)
+            // Set EMAIL_FROM_PROMOTIONS in your env to use a different from address.
+            fromAddress: process.env.EMAIL_FROM_PROMOTIONS || undefined,
+            replyTo: process.env.EMAIL_REPLY_TO_PROMOTIONS || undefined,
             htmlFn: (recipient) =>
                 riderPromotionalTemplate({
                     riderName: recipient.name || 'there',

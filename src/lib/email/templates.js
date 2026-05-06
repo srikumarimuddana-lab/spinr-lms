@@ -286,53 +286,110 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
   <title>You've got a promo from Spinr!</title>
   <style>
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
-      50% { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      50%      { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
+    }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
+      50%      { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
     }
     @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-16px); }
+      from { opacity: 0; transform: translateY(-18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    .coupon-box { animation: pulse 2.4s ease-in-out infinite; }
-    .hero-title { animation: fadeInDown 0.7s ease-out both; }
-    .hero-sub   { animation: fadeInDown 0.7s 0.15s ease-out both; }
-    .cta-btn    { animation: fadeInDown 0.7s 0.3s ease-out both; }
+    @keyframes shimmer {
+      0%   { background-position: -300px 0; }
+      100% { background-position: 300px 0; }
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-2deg); }
+      50%      { transform: rotate(2deg); }
+    }
+    .ribbon       { animation: wiggle 3s ease-in-out infinite; }
+    .coupon-box   { animation: pulse 2.4s ease-in-out infinite; }
+    .cta-red      { animation: pulseRed 2.2s ease-in-out infinite; }
+    .hero-title   { animation: fadeInDown 0.7s ease-out both; }
+    .hero-sub     { animation: fadeInDown 0.7s 0.15s ease-out both; }
+    .cta-btn      { animation: fadeInDown 0.7s 0.3s ease-out both; }
+    .step         { animation: fadeInUp 0.6s ease-out both; }
+    .step-1       { animation-delay: 0.05s; }
+    .step-2       { animation-delay: 0.20s; }
+    .step-3       { animation-delay: 0.35s; }
+    .shimmer-bg {
+      background: linear-gradient(90deg,#dc2626 0%,#ef4444 25%,#fca5a5 50%,#ef4444 75%,#dc2626 100%);
+      background-size: 600px 100%;
+      animation: shimmer 3s linear infinite;
+    }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#141414;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-  <table role="presentation" width="100%" style="border-collapse:collapse;background:#141414;">
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <!-- Preheader (hidden) -->
+  <div style="display:none;font-size:1px;color:#f5f5f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    ${safeRiderName}, you've got ${safeDiscountPercent}% off your next rides with code ${safeCouponCode}
+  </div>
+
+  <table role="presentation" width="100%" style="border-collapse:collapse;background:#f5f5f5;">
     <tr>
-      <td align="center" style="padding:40px 16px;">
-        <table role="presentation" width="100%" style="max-width:600px;border-collapse:collapse;">
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" style="max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.12);">
 
-          <!-- ── HERO ── -->
+          <!-- ════════ RED RIBBON BANNER ════════ -->
           <tr>
-            <td style="background:#000;border-radius:20px 20px 0 0;padding:36px 40px 32px;">
-              <!-- Logo -->
-              <p style="margin:0 0 28px;color:#fff;font-size:20px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">SPINR</p>
+            <td class="shimmer-bg" style="padding:14px 24px;text-align:center;">
+              <p class="ribbon" style="margin:0;color:#ffffff;font-size:13px;font-weight:900;letter-spacing:4px;text-transform:uppercase;display:inline-block;">
+                &#x1F381; &nbsp; Limited Time Offer &nbsp; &#x1F381;
+              </p>
+            </td>
+          </tr>
 
-              <!-- Headline -->
-              <h1 class="hero-title" style="margin:0 0 16px;color:#86efac;font-size:40px;font-weight:900;line-height:1.1;letter-spacing:-1px;">
-                Enjoy ${safeDiscountPercent}% off<br>your rides!
+          <!-- ════════ BLACK HERO ════════ -->
+          <tr>
+            <td style="background:#000000;padding:40px 40px 32px;position:relative;">
+              <!-- Logo + tagline row -->
+              <table role="presentation" width="100%" style="margin:0 0 24px;">
+                <tr>
+                  <td>
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:900;letter-spacing:4px;text-transform:uppercase;">
+                      <span style="color:#22c55e;">&#x25CF;</span>&nbsp; SPINR
+                    </p>
+                  </td>
+                  <td align="right">
+                    <span style="display:inline-block;background:#dc2626;color:#fff;padding:5px 12px;border-radius:50px;font-size:10px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">
+                      Exclusive
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Big headline -->
+              <h1 class="hero-title" style="margin:0 0 14px;color:#ffffff;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.5px;">
+                Hey ${safeRiderName}, you've got
               </h1>
-
-              <!-- Subtext -->
-              <p class="hero-sub" style="margin:0 0 28px;color:#e5e7eb;font-size:16px;line-height:1.65;">
-                ${safeRiderName}, enjoy <strong style="color:#86efac;">${safeDiscountPercent}% off</strong>${safeMaxRides ? ` on ${safeMaxRides} trips` : ''}.
-                Your promo code is ready to use in your account${safeExpiryDate ? ` and is valid until <strong style="color:#fbbf24;">${safeExpiryDate}</strong>` : ''}.
+              <h2 class="hero-title" style="margin:0 0 18px;color:#22c55e;font-size:56px;font-weight:900;line-height:1;letter-spacing:-2px;">
+                ${safeDiscountPercent}% OFF
+              </h2>
+              <p class="hero-sub" style="margin:0 0 26px;color:#d1d5db;font-size:16px;line-height:1.6;">
+                Your next${safeMaxRides ? ` <strong style="color:#fff;">${safeMaxRides} rides</strong>` : ' ride'} on Spinr — courtesy of us.
+                ${safeExpiryDate ? `Hurry, this deal expires <strong style="color:#fbbf24;">${safeExpiryDate}</strong>.` : ''}
               </p>
 
-              <!-- CTA -->
-              <table role="presentation" style="margin:0;">
+              <!-- Dual CTAs -->
+              <table role="presentation" class="cta-btn" style="margin:0;">
                 <tr>
-                  <td class="cta-btn">
+                  <td style="padding-right:10px;">
                     <a href="${safeAppUrl}"
-                       style="display:inline-block;background:#fff;color:#000;padding:14px 36px;text-decoration:none;border-radius:50px;font-weight:800;font-size:15px;letter-spacing:0.3px;">
-                      Book a Ride
+                       style="display:inline-block;background:#22c55e;color:#000000;padding:14px 28px;text-decoration:none;border-radius:50px;font-weight:900;font-size:14px;letter-spacing:0.5px;text-transform:uppercase;">
+                      &#x1F697; &nbsp;Book a Ride
+                    </a>
+                  </td>
+                  <td>
+                    <a href="${safeAppUrl}"
+                       style="display:inline-block;background:transparent;color:#ffffff;padding:13px 24px;text-decoration:none;border-radius:50px;font-weight:700;font-size:13px;letter-spacing:0.5px;border:2px solid #ffffff;">
+                      Learn More
                     </a>
                   </td>
                 </tr>
@@ -340,88 +397,210 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
             </td>
           </tr>
 
-          <!-- ── COUPON CODE BOX ── -->
+          <!-- ════════ COUPON CODE — GREEN ON BLACK ════════ -->
           <tr>
-            <td style="background:#000;padding:0 40px 40px;">
-              <div class="coupon-box"
-                   style="border:2px dashed #22c55e;border-radius:14px;padding:22px 24px;text-align:center;background:linear-gradient(135deg,#052e16 0%,#14532d 100%);">
-                <p style="margin:0 0 6px;color:#86efac;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:3px;">Your Promo Code</p>
-                <p style="margin:0;color:#fff;font-size:34px;font-weight:900;letter-spacing:10px;font-family:'Courier New',Courier,monospace;">${safeCouponCode}</p>
-                <p style="margin:8px 0 0;color:#6ee7b7;font-size:13px;">${safeDiscountPercent}% discount — apply at checkout</p>
-              </div>
+            <td style="background:#000000;padding:8px 40px 40px;">
+              <table role="presentation" width="100%" class="coupon-box"
+                     style="border:3px dashed #22c55e;border-radius:18px;background:linear-gradient(135deg,#052e16 0%,#14532d 50%,#166534 100%);">
+                <tr>
+                  <td style="padding:24px;text-align:center;">
+                    <p style="margin:0 0 4px;color:#86efac;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:4px;">
+                      &#x2702; Your Promo Code &#x2702;
+                    </p>
+                    <p style="margin:10px 0 6px;color:#ffffff;font-size:38px;font-weight:900;letter-spacing:12px;font-family:'Courier New',Courier,monospace;text-shadow:0 2px 0 rgba(0,0,0,0.4);">
+                      ${safeCouponCode}
+                    </p>
+                    <table role="presentation" align="center" style="margin:6px auto 0;">
+                      <tr>
+                        <td style="background:#22c55e;color:#000;font-weight:900;font-size:11px;padding:5px 14px;border-radius:50px;letter-spacing:1.5px;text-transform:uppercase;">
+                          ${safeDiscountPercent}% Off Applied
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin:14px 0 0;color:#a7f3d0;font-size:12px;line-height:1.5;">
+                      Tap to copy &amp; paste at checkout, or it'll be auto-applied to your account
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
-          <!-- ── WAVE DIVIDER (pure CSS) ── -->
+          ${safeExpiryDate ? `
+          <!-- ════════ RED EXPIRY STRIP ════════ -->
           <tr>
-            <td style="background:#111;padding:0;line-height:0;">
-              <div style="height:32px;background:linear-gradient(to bottom right,#000 49%,#111 50%);"></div>
-            </td>
-          </tr>
-
-          <!-- ── FEATURES ── -->
-          <tr>
-            <td style="background:#111;padding:36px 40px 40px;">
-              <h2 style="margin:0 0 6px;color:#fff;font-size:22px;font-weight:800;">Ride with Spinr, your way</h2>
-              <p style="margin:0 0 28px;color:#9ca3af;font-size:14px;line-height:1.65;">
-                From your first trip of the morning to your last of the night, Spinr is built to move with you.
+            <td style="background:#dc2626;padding:14px 40px;text-align:center;">
+              <p style="margin:0;color:#ffffff;font-size:13px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;">
+                &#x23F0; &nbsp; Expires ${safeExpiryDate} &nbsp; — &nbsp; Don't miss out!
               </p>
+            </td>
+          </tr>` : ''}
 
-              <!-- Feature row helper -->
-              <table role="presentation" width="100%" style="margin:0 0 20px;">
+          <!-- ════════ WHITE: HOW IT WORKS ════════ -->
+          <tr>
+            <td style="background:#ffffff;padding:44px 40px 36px;">
+              <p style="margin:0 0 6px;color:#dc2626;font-size:12px;font-weight:800;letter-spacing:3px;text-transform:uppercase;text-align:center;">
+                ⎯⎯⎯ &nbsp; Easy as 1-2-3 &nbsp; ⎯⎯⎯
+              </p>
+              <h3 style="margin:0 0 28px;color:#111827;font-size:26px;font-weight:900;text-align:center;letter-spacing:-0.5px;">
+                How to redeem your offer
+              </h3>
+
+              <!-- Step 1 -->
+              <table role="presentation" width="100%" class="step step-1" style="margin:0 0 16px;">
                 <tr>
-                  <td width="44" style="vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#0f2d0f;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">&#x1F697;</div>
+                  <td width="56" style="vertical-align:top;">
+                    <div style="width:44px;height:44px;background:#dc2626;color:#fff;border-radius:50%;text-align:center;line-height:44px;font-weight:900;font-size:18px;font-family:Arial,sans-serif;">1</div>
                   </td>
                   <td style="padding-left:14px;">
-                    <p style="margin:0 0 3px;color:#fff;font-size:14px;font-weight:700;">Safe &amp; reliable rides</p>
-                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.55;">Our verified drivers are ready to take you anywhere, anytime.</p>
+                    <p style="margin:0 0 4px;color:#111827;font-size:16px;font-weight:800;">Open the Spinr app</p>
+                    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.55;">Sign in with the email this promo was sent to.</p>
                   </td>
                 </tr>
               </table>
 
-              <table role="presentation" width="100%" style="margin:0 0 20px;">
+              <!-- Step 2 -->
+              <table role="presentation" width="100%" class="step step-2" style="margin:0 0 16px;">
                 <tr>
-                  <td width="44" style="vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#0f2d0f;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">&#x1F4CD;</div>
+                  <td width="56" style="vertical-align:top;">
+                    <div style="width:44px;height:44px;background:#dc2626;color:#fff;border-radius:50%;text-align:center;line-height:44px;font-weight:900;font-size:18px;font-family:Arial,sans-serif;">2</div>
                   </td>
                   <td style="padding-left:14px;">
-                    <p style="margin:0 0 3px;color:#fff;font-size:14px;font-weight:700;">Real-time tracking</p>
-                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.55;">Watch your driver arrive live and share your trip for extra peace of mind.</p>
+                    <p style="margin:0 0 4px;color:#111827;font-size:16px;font-weight:800;">Enter your code</p>
+                    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.55;">Tap <em>Promotions</em> and add <strong style="color:#16a34a;font-family:monospace;">${safeCouponCode}</strong>.</p>
                   </td>
                 </tr>
               </table>
 
+              <!-- Step 3 -->
+              <table role="presentation" width="100%" class="step step-3">
+                <tr>
+                  <td width="56" style="vertical-align:top;">
+                    <div style="width:44px;height:44px;background:#16a34a;color:#fff;border-radius:50%;text-align:center;line-height:44px;font-weight:900;font-size:18px;font-family:Arial,sans-serif;">3</div>
+                  </td>
+                  <td style="padding-left:14px;">
+                    <p style="margin:0 0 4px;color:#111827;font-size:16px;font-weight:800;">Ride &amp; save ${safeDiscountPercent}%</p>
+                    <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.55;">Discount is applied automatically at checkout. Enjoy the ride!</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ════════ GREEN STATS BAR ════════ -->
+          <tr>
+            <td style="background:linear-gradient(90deg,#16a34a 0%,#22c55e 50%,#16a34a 100%);padding:22px 32px;">
               <table role="presentation" width="100%">
                 <tr>
-                  <td width="44" style="vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#0f2d0f;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">&#x1F4B0;</div>
+                  <td width="33%" align="center" style="border-right:1px solid rgba(255,255,255,0.25);padding:0 8px;">
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:900;line-height:1;">10K+</p>
+                    <p style="margin:4px 0 0;color:#dcfce7;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Riders</p>
                   </td>
-                  <td style="padding-left:14px;">
-                    <p style="margin:0 0 3px;color:#fff;font-size:14px;font-weight:700;">Upfront, transparent pricing</p>
-                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.55;">No surge surprises — know your fare before you go. Save even more with <strong style="color:#86efac;">${safeCouponCode}</strong>.</p>
+                  <td width="33%" align="center" style="border-right:1px solid rgba(255,255,255,0.25);padding:0 8px;">
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:900;line-height:1;">4.9 &#x2605;</p>
+                    <p style="margin:4px 0 0;color:#dcfce7;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Avg Rating</p>
+                  </td>
+                  <td width="34%" align="center" style="padding:0 8px;">
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:900;line-height:1;">24/7</p>
+                    <p style="margin:4px 0 0;color:#dcfce7;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Available</p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- ── DISCLAIMER ── -->
+          <!-- ════════ BLACK FEATURES SECTION ════════ -->
           <tr>
-            <td style="background:#0a0a0a;border-radius:0 0 20px 20px;padding:24px 40px;">
-              <p style="margin:0 0 12px;color:#4b5563;font-size:11px;line-height:1.8;">
-                This promotion is only valid for riders who received this email directly from Spinr.
-                ${safeMaxRides ? `Valid for up to ${safeMaxRides} ride(s). ` : ''}
-                ${safeExpiryDate ? `Offer expires on ${safeExpiryDate}. ` : ''}
-                Promotion does not apply to surcharges, government fees, tolls, tips or taxes.
-                Offer cannot be combined with other promotions or discounts.
-                Code <strong style="color:#6b7280;">${safeCouponCode}</strong> must be entered at checkout.
-                Offer is non-transferable. Terms are subject to change without notice.
+            <td style="background:#000000;padding:40px 40px 36px;">
+              <h3 style="margin:0 0 6px;color:#ffffff;font-size:22px;font-weight:900;text-align:center;letter-spacing:-0.5px;">
+                Why riders <span style="color:#dc2626;">&#x2764;</span> Spinr
+              </h3>
+              <p style="margin:0 0 28px;color:#9ca3af;font-size:13px;line-height:1.6;text-align:center;">
+                Built to move with you, every day.
               </p>
-              <p style="margin:0;color:#374151;font-size:11px;text-align:center;">
-                &copy; ${year} Spinr. All rights reserved.
-                &nbsp;|&nbsp;
-                <a href="${safeAppUrl}" style="color:#22c55e;text-decoration:none;">spinr.ca</a>
+
+              <!-- Feature 1 -->
+              <table role="presentation" width="100%" style="margin:0 0 18px;">
+                <tr>
+                  <td width="48" style="vertical-align:top;padding-top:2px;">
+                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:12px;text-align:center;line-height:42px;font-size:20px;">&#x1F697;</div>
+                  </td>
+                  <td style="padding-left:14px;">
+                    <p style="margin:0 0 3px;color:#ffffff;font-size:15px;font-weight:800;">Verified, vetted drivers</p>
+                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6;">Background-checked and trained — your safety is our priority.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Feature 2 -->
+              <table role="presentation" width="100%" style="margin:0 0 18px;">
+                <tr>
+                  <td width="48" style="vertical-align:top;padding-top:2px;">
+                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#dc2626,#ef4444);border-radius:12px;text-align:center;line-height:42px;font-size:20px;">&#x1F4CD;</div>
+                  </td>
+                  <td style="padding-left:14px;">
+                    <p style="margin:0 0 3px;color:#ffffff;font-size:15px;font-weight:800;">Live trip tracking</p>
+                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6;">Watch your driver arrive in real time and share trip details with loved ones.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Feature 3 -->
+              <table role="presentation" width="100%">
+                <tr>
+                  <td width="48" style="vertical-align:top;padding-top:2px;">
+                    <div style="width:42px;height:42px;background:linear-gradient(135deg,#16a34a,#22c55e);border-radius:12px;text-align:center;line-height:42px;font-size:20px;">&#x1F4B0;</div>
+                  </td>
+                  <td style="padding-left:14px;">
+                    <p style="margin:0 0 3px;color:#ffffff;font-size:15px;font-weight:800;">Upfront, transparent pricing</p>
+                    <p style="margin:0;color:#9ca3af;font-size:13px;line-height:1.6;">No surge surprises. Know your fare before you book — and save more with <strong style="color:#22c55e;font-family:monospace;">${safeCouponCode}</strong>.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ════════ RED FINAL CTA STRIP ════════ -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#991b1b 0%,#dc2626 50%,#ef4444 100%);padding:36px 40px;text-align:center;">
+              <p style="margin:0 0 6px;color:#fecaca;font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">
+                ⎯⎯ &nbsp; Don't wait &nbsp; ⎯⎯
+              </p>
+              <h3 style="margin:0 0 16px;color:#ffffff;font-size:24px;font-weight:900;letter-spacing:-0.3px;">
+                Your ${safeDiscountPercent}% off is waiting
+              </h3>
+              <p style="margin:0 0 22px;color:#fee2e2;font-size:14px;line-height:1.6;">
+                Book your next ride now — savings auto-applied at checkout.
+              </p>
+              <a href="${safeAppUrl}" class="cta-red"
+                 style="display:inline-block;background:#ffffff;color:#dc2626;padding:15px 38px;text-decoration:none;border-radius:50px;font-weight:900;font-size:15px;letter-spacing:1px;text-transform:uppercase;">
+                Book Now &rarr;
+              </a>
+            </td>
+          </tr>
+
+          <!-- ════════ WHITE FOOTER / DISCLAIMER ════════ -->
+          <tr>
+            <td style="background:#ffffff;padding:28px 40px 24px;border-top:1px solid #e5e7eb;">
+              <p style="margin:0 0 10px;color:#374151;font-size:13px;font-weight:700;text-align:center;">
+                Questions? We're here to help.
+              </p>
+              <p style="margin:0 0 16px;text-align:center;">
+                <a href="${safeAppUrl}" style="color:#dc2626;text-decoration:none;font-size:13px;font-weight:600;margin:0 10px;">Help Centre</a>
+                <span style="color:#d1d5db;">|</span>
+                <a href="${safeAppUrl}" style="color:#16a34a;text-decoration:none;font-size:13px;font-weight:600;margin:0 10px;">Terms</a>
+                <span style="color:#d1d5db;">|</span>
+                <a href="${safeAppUrl}" style="color:#111827;text-decoration:none;font-size:13px;font-weight:600;margin:0 10px;">Privacy</a>
+              </p>
+              <p style="margin:0 0 10px;color:#9ca3af;font-size:10px;line-height:1.7;text-align:center;">
+                This promo is only valid for riders who received this email directly from Spinr.
+                ${safeMaxRides ? `Valid for up to ${safeMaxRides} ride(s). ` : ''}
+                ${safeExpiryDate ? `Expires ${safeExpiryDate}. ` : ''}
+                Promo doesn't apply to surcharges, fees, tolls, tips or taxes.
+                Cannot be combined with other offers. Code <strong style="color:#6b7280;">${safeCouponCode}</strong> is non-transferable. Terms subject to change.
+              </p>
+              <p style="margin:14px 0 0;color:#9ca3af;font-size:11px;text-align:center;">
+                &copy; ${year} Spinr. All rights reserved. &nbsp;|&nbsp; <a href="${safeAppUrl}" style="color:#16a34a;text-decoration:none;">spinr.ca</a>
               </p>
             </td>
           </tr>

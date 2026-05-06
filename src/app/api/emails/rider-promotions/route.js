@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { sendBulkEmailsDirect } from '@/lib/email/sender';
-import { riderPromotionalTemplate } from '@/lib/email/templates';
+import { riderPromotionalTemplate, EmailConfig } from '@/lib/email/templates';
+
+// Derive promo sender from the existing verified domain — same domain, "Spinr" display name, promo@ local part
+function buildPromoFrom() {
+    if (process.env.EMAIL_FROM_PROMOTIONS) return process.env.EMAIL_FROM_PROMOTIONS;
+    // Extract domain from e.g. "Spinr Training <noreply@training.spinr.ca>"
+    const match = EmailConfig.from.match(/<[^@]+@([^>]+)>/);
+    const domain = match ? match[1] : null;
+    return domain ? `Spinr <promo@${domain}>` : EmailConfig.from;
+}
 
 export async function POST(request) {
     try {
@@ -42,11 +51,19 @@ export async function POST(request) {
             );
         }
 
-        const subject = `You've got a promo from Spinr! ${discountPercent}% off your rides`;
+        // Personalised subject per rider — falls back if no name was provided
+        const subjectFor = (recipient) => {
+            const firstName = (recipient.name || '').split(/\s+/)[0].trim();
+            return firstName
+                ? `${firstName}, you've got a promo! ${discountPercent}% off your rides 🎁`
+                : `You've got a promo! ${discountPercent}% off your rides 🎁`;
+        };
 
         const result = await sendBulkEmailsDirect({
             recipients,
-            subject,
+            subject: subjectFor,
+            fromAddress: buildPromoFrom(),
+            replyTo: process.env.EMAIL_REPLY_TO_PROMOTIONS || undefined,
             htmlFn: (recipient) =>
                 riderPromotionalTemplate({
                     riderName: recipient.name || 'there',

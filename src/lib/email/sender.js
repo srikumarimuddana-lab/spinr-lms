@@ -243,10 +243,12 @@ export async function sendBulkEmails({ recipients, templateType, variables }) {
  *
  * @param {Object} options
  * @param {Array<{email: string, name?: string}>} options.recipients
- * @param {string} options.subject
+ * @param {string|Function} options.subject - String, or function(recipient) => string
  * @param {Function} options.htmlFn - Called with each recipient, returns HTML string
+ * @param {string} [options.fromAddress] - Override sender (e.g. 'Spinr <promo@spinr.ca>')
+ * @param {string} [options.replyTo] - Override reply-to address
  */
-export async function sendBulkEmailsDirect({ recipients, subject, htmlFn }) {
+export async function sendBulkEmailsDirect({ recipients, subject, htmlFn, fromAddress, replyTo }) {
     if (!recipients || recipients.length === 0) {
         return { error: new Error('No valid recipients provided') };
     }
@@ -257,12 +259,13 @@ export async function sendBulkEmailsDirect({ recipients, subject, htmlFn }) {
     for (let i = 0; i < recipients.length; i++) {
         const recipient = recipients[i];
         const html = htmlFn(recipient);
+        const emailSubject = typeof subject === 'function' ? subject(recipient) : subject;
 
         const result = await sendEmailWithRetry({
-            from: EmailConfig.from,
-            reply_to: EmailConfig.replyTo,
+            from: fromAddress || EmailConfig.from,
+            reply_to: replyTo || EmailConfig.replyTo,
             to: [recipient.email],
-            subject,
+            subject: emailSubject,
             html,
         });
 

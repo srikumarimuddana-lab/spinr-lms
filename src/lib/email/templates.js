@@ -269,13 +269,14 @@ export function accountNotificationTemplate({ userName, subject, message, action
 // ============================================================================
 // TEMPLATE: Rider Promotional Email (Coupon/Promo Codes)
 // ============================================================================
-export function riderPromotionalTemplate({ riderName, couponCode, discountPercent, expiryDate, maxRides, appUrl }) {
+export function riderPromotionalTemplate({ riderName, couponCode, discountPercent, expiryDate, maxRides, appUrl, logoUrl }) {
     const safeRiderName = escapeHtml(riderName) || 'there';
     const safeCouponCode = escapeHtml(couponCode);
     const safeDiscountPercent = escapeHtml(String(discountPercent));
     const safeExpiryDate = expiryDate ? escapeHtml(expiryDate) : null;
     const safeMaxRides = maxRides ? escapeHtml(String(maxRides)) : null;
     const safeAppUrl = escapeHtml(appUrl || '#');
+    const safeLogoUrl = logoUrl ? escapeHtml(logoUrl) : null;
     const year = new Date().getFullYear();
 
     return `<!DOCTYPE html>
@@ -314,9 +315,11 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
           <!-- ── HEADER: Logo ── -->
           <tr>
             <td style="padding:32px 40px 0;">
-              <p style="margin:0;font-size:26px;font-weight:900;color:#dc2626;letter-spacing:-0.5px;font-family:Arial,sans-serif;">
-                spinr
-              </p>
+              ${safeLogoUrl
+                ? `<img src="${safeLogoUrl}" alt="Spinr" width="120" height="49"
+                        style="display:block;width:120px;height:auto;border:0;" />`
+                : `<p style="margin:0;font-size:26px;font-weight:900;color:#dc2626;letter-spacing:-0.5px;font-family:Arial,sans-serif;">spinr</p>`
+              }
             </td>
           </tr>
 

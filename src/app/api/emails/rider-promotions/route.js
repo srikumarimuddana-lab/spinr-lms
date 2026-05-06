@@ -3,6 +3,8 @@ import { requireAdmin } from '@/lib/api-auth';
 import { sendBulkEmailsDirect } from '@/lib/email/sender';
 import { riderPromotionalTemplate, EmailConfig } from '@/lib/email/templates';
 
+const LOGO_URL = `${EmailConfig.baseUrl}/logo.png`;
+
 // Derive promo sender from the existing verified domain — same domain, "Spinr" display name, promo@ local part
 function buildPromoFrom() {
     if (process.env.EMAIL_FROM_PROMOTIONS) return process.env.EMAIL_FROM_PROMOTIONS;
@@ -72,6 +74,7 @@ export async function POST(request) {
                     expiryDate: expiryDate || null,
                     maxRides: maxRides || null,
                     appUrl: appUrl?.trim() || '#',
+                    logoUrl: LOGO_URL,
                 }),
         });
 

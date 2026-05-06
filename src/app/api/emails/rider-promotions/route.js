@@ -3,7 +3,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { sendBulkEmailsDirect } from '@/lib/email/sender';
 import { riderPromotionalTemplate, EmailConfig } from '@/lib/email/templates';
 
-const LOGO_URL = `${EmailConfig.baseUrl}/logo.png`;
+const LOGO_URL = 'https://www.spinr.ca/logo.png';
 
 // Derive promo sender from the existing verified domain — same domain, "Spinr" display name, promo@ local part
 function buildPromoFrom() {

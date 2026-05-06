@@ -314,7 +314,7 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
           <!-- ── HEADER: Logo ── -->
           <tr>
             <td style="padding:32px 40px 0;">
-              <p style="margin:0;font-size:26px;font-weight:900;color:#16a34a;letter-spacing:-0.5px;font-family:Arial,sans-serif;">
+              <p style="margin:0;font-size:26px;font-weight:900;color:#dc2626;letter-spacing:-0.5px;font-family:Arial,sans-serif;">
                 spinr
               </p>
             </td>
@@ -359,59 +359,14 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
             </td>
           </tr>
 
-          <!-- ── VISUAL HERO BANNER (CSS art — no external image needed) ── -->
+          <!-- ── HERO IMAGE ── -->
           <tr>
             <td style="padding:32px 40px 0;line-height:0;">
-              <!-- Night road scene using CSS -->
-              <div style="border-radius:10px;overflow:hidden;background:linear-gradient(180deg,#0f172a 0%,#1e293b 45%,#166534 46%,#15803d 100%);height:200px;position:relative;">
-                <!-- Stars -->
-                <div style="position:absolute;top:14px;left:60px;width:3px;height:3px;background:#fff;border-radius:50%;opacity:0.9;"></div>
-                <div style="position:absolute;top:22px;left:160px;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0.7;"></div>
-                <div style="position:absolute;top:10px;left:260px;width:3px;height:3px;background:#fff;border-radius:50%;opacity:0.85;"></div>
-                <div style="position:absolute;top:28px;left:360px;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0.6;"></div>
-                <div style="position:absolute;top:16px;left:440px;width:3px;height:3px;background:#fff;border-radius:50%;opacity:0.9;"></div>
-                <div style="position:absolute;top:8px;left:500px;width:2px;height:2px;background:#fff;border-radius:50%;opacity:0.75;"></div>
-                <!-- Moon -->
-                <div style="position:absolute;top:18px;right:60px;width:24px;height:24px;background:#fef9c3;border-radius:50%;box-shadow:0 0 12px rgba(254,249,195,0.6);"></div>
-                <!-- Road dashes -->
-                <div style="position:absolute;bottom:24px;left:0;right:0;height:4px;background:rgba(255,255,255,0.15);"></div>
-                <div style="position:absolute;bottom:32px;left:50px;width:60px;height:4px;background:rgba(255,255,255,0.7);border-radius:2px;"></div>
-                <div style="position:absolute;bottom:32px;left:180px;width:60px;height:4px;background:rgba(255,255,255,0.7);border-radius:2px;"></div>
-                <div style="position:absolute;bottom:32px;left:310px;width:60px;height:4px;background:rgba(255,255,255,0.7);border-radius:2px;"></div>
-                <div style="position:absolute;bottom:32px;left:440px;width:60px;height:4px;background:rgba(255,255,255,0.7);border-radius:2px;"></div>
-                <!-- Car silhouette (CSS) -->
-                <div style="position:absolute;bottom:36px;left:50%;transform:translateX(-50%);">
-                  <!-- Car body -->
-                  <div style="width:120px;height:36px;background:#22c55e;border-radius:6px;position:relative;">
-                    <!-- Roof -->
-                    <div style="position:absolute;top:-22px;left:18px;width:72px;height:26px;background:#16a34a;border-radius:8px 8px 0 0;"></div>
-                    <!-- Windshields -->
-                    <div style="position:absolute;top:-18px;left:22px;width:28px;height:18px;background:#7dd3fc;border-radius:4px 4px 0 0;opacity:0.85;"></div>
-                    <div style="position:absolute;top:-18px;left:56px;width:28px;height:18px;background:#7dd3fc;border-radius:4px 4px 0 0;opacity:0.85;"></div>
-                    <!-- Headlights -->
-                    <div style="position:absolute;top:10px;right:-6px;width:8px;height:10px;background:#fef08a;border-radius:2px;box-shadow:0 0 8px rgba(254,240,138,0.9);"></div>
-                    <!-- Tail lights -->
-                    <div style="position:absolute;top:10px;left:-6px;width:8px;height:10px;background:#ef4444;border-radius:2px;"></div>
-                    <!-- Wheels -->
-                    <div style="position:absolute;bottom:-12px;left:14px;width:24px;height:24px;background:#1f2937;border-radius:50%;border:3px solid #6b7280;"></div>
-                    <div style="position:absolute;bottom:-12px;right:14px;width:24px;height:24px;background:#1f2937;border-radius:50%;border:3px solid #6b7280;"></div>
-                  </div>
-                </div>
-                <!-- City buildings silhouette -->
-                <div style="position:absolute;bottom:52px;left:0;right:0;display:flex;align-items:flex-end;gap:3px;padding:0 10px;">
-                  <div style="width:18px;height:50px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:14px;height:35px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:22px;height:65px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:16px;height:42px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:20px;height:55px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="flex:1;"></div>
-                  <div style="width:20px;height:48px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:16px;height:38px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:24px;height:72px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:14px;height:30px;background:#0f172a;opacity:0.6;"></div>
-                  <div style="width:18px;height:50px;background:#0f172a;opacity:0.6;"></div>
-                </div>
-              </div>
+              <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=600&h=220&fit=crop&q=80"
+                   alt="Ride with Spinr"
+                   width="500"
+                   style="display:block;width:100%;height:auto;border-radius:10px;max-width:500px;"
+              />
             </td>
           </tr>
 
@@ -483,6 +438,9 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
           <!-- ── FOOTER ── -->
           <tr>
             <td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:24px 40px;">
+              <p style="margin:0 0 6px;color:#dc2626;font-size:12px;font-weight:700;text-align:center;letter-spacing:0.3px;">
+                * Terms &amp; Conditions Apply
+              </p>
               <p style="margin:0 0 8px;color:#9ca3af;font-size:11px;line-height:1.75;text-align:center;">
                 This promo is only valid for riders who received this email directly from Spinr.
                 ${safeMaxRides ? `Valid for up to ${safeMaxRides} ride(s). ` : ''}

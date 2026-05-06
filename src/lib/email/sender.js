@@ -245,21 +245,54 @@ export async function sendBulkEmails({ recipients, templateType, variables }) {
  * @param {Array<{email: string, name?: string}>} options.recipients
  * @param {string|Function} options.subject - String, or function(recipient) => string
  * @param {Function} options.htmlFn - Called with each recipient, returns HTML string
- * @param {string} [options.fromAddress] - Override sender (e.g. 'Spinr <promo@spinr.ca>')
+ * @param {string} [options.fromAddress] - Override sender
  * @param {string} [options.replyTo] - Override reply-to address
+ * @param {Function} [options.unsubscribeUrlFn] - function(recipient) => unsubscribe URL string
  */
-export async function sendBulkEmailsDirect({ recipients, subject, htmlFn, fromAddress, replyTo }) {
+export async function sendBulkEmailsDirect({ recipients, subject, htmlFn, fromAddress, replyTo, unsubscribeUrlFn }) {
     if (!recipients || recipients.length === 0) {
         return { error: new Error('No valid recipients provided') };
+    }
+
+    // Filter out unsubscribed emails before sending
+    let filteredRecipients = recipients;
+    let skippedCount = 0;
+    try {
+        const { createServiceClient } = await import('../supabase-server');
+        const supabase = await createServiceClient();
+        const emailList = recipients.map(r => r.email.toLowerCase());
+        const { data: unsubscribed } = await supabase
+            .from('rider_unsubscribes')
+            .select('email')
+            .in('email', emailList);
+
+        if (unsubscribed?.length) {
+            const unsubSet = new Set(unsubscribed.map(u => u.email.toLowerCase()));
+            filteredRecipients = recipients.filter(r => !unsubSet.has(r.email.toLowerCase()));
+            skippedCount = recipients.length - filteredRecipients.length;
+            if (skippedCount > 0) {
+                console.log(`Skipping ${skippedCount} unsubscribed recipient(s)`);
+            }
+        }
+    } catch (err) {
+        // Non-fatal — log and continue sending to all
+        console.warn('Could not check unsubscribes, proceeding anyway:', err.message);
     }
 
     let sentCount = 0;
     let failedCount = 0;
 
-    for (let i = 0; i < recipients.length; i++) {
-        const recipient = recipients[i];
+    for (let i = 0; i < filteredRecipients.length; i++) {
+        const recipient = filteredRecipients[i];
         const html = htmlFn(recipient);
         const emailSubject = typeof subject === 'function' ? subject(recipient) : subject;
+
+        const extraHeaders = {};
+        if (unsubscribeUrlFn) {
+            const unsubUrl = unsubscribeUrlFn(recipient);
+            extraHeaders['List-Unsubscribe'] = `<${unsubUrl}>`;
+            extraHeaders['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+        }
 
         const result = await sendEmailWithRetry({
             from: fromAddress || EmailConfig.from,
@@ -267,6 +300,7 @@ export async function sendBulkEmailsDirect({ recipients, subject, htmlFn, fromAd
             to: [recipient.email],
             subject: emailSubject,
             html,
+            ...(Object.keys(extraHeaders).length ? { headers: extraHeaders } : {}),
         });
 
         if (result.error) {
@@ -276,12 +310,12 @@ export async function sendBulkEmailsDirect({ recipients, subject, htmlFn, fromAd
             sentCount++;
         }
 
-        if (i < recipients.length - 1) {
+        if (i < filteredRecipients.length - 1) {
             await new Promise(resolve => setTimeout(resolve, EmailConfig.rateLimit.delayBetweenEmails));
         }
     }
 
-    return { sentCount, failedCount, total: recipients.length };
+    return { sentCount, failedCount, skippedCount, total: recipients.length };
 }
 
 /**

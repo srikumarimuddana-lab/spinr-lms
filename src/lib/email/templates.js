@@ -269,7 +269,7 @@ export function accountNotificationTemplate({ userName, subject, message, action
 // ============================================================================
 // TEMPLATE: Rider Promotional Email (Coupon/Promo Codes)
 // ============================================================================
-export function riderPromotionalTemplate({ riderName, couponCode, discountPercent, expiryDate, maxRides, appUrl, logoUrl }) {
+export function riderPromotionalTemplate({ riderName, couponCode, discountPercent, expiryDate, maxRides, appUrl, logoUrl, unsubscribeUrl }) {
     const safeRiderName = escapeHtml(riderName) || 'there';
     const safeCouponCode = escapeHtml(couponCode);
     const safeDiscountPercent = escapeHtml(String(discountPercent));
@@ -277,6 +277,7 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
     const safeMaxRides = maxRides ? escapeHtml(String(maxRides)) : null;
     const safeAppUrl = escapeHtml(appUrl || '#');
     const safeLogoUrl = logoUrl ? escapeHtml(logoUrl) : null;
+    const safeUnsubscribeUrl = unsubscribeUrl ? escapeHtml(unsubscribeUrl) : safeAppUrl;
     const year = new Date().getFullYear();
 
     return `<!DOCTYPE html>
@@ -456,7 +457,7 @@ export function riderPromotionalTemplate({ riderName, couponCode, discountPercen
                 <span style="color:#d1d5db;font-size:12px;">|</span>
                 <a href="${safeAppUrl}" style="color:#6b7280;text-decoration:none;font-size:12px;margin:0 8px;">Terms</a>
                 <span style="color:#d1d5db;font-size:12px;">|</span>
-                <a href="${safeAppUrl}" style="color:#6b7280;text-decoration:none;font-size:12px;margin:0 8px;">Unsubscribe</a>
+                <a href="${safeUnsubscribeUrl}" style="color:#6b7280;text-decoration:none;font-size:12px;margin:0 8px;">Unsubscribe</a>
               </p>
               <p style="margin:10px 0 0;color:#d1d5db;font-size:11px;text-align:center;">
                 &copy; ${year} Spinr. All rights reserved.

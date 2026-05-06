@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { sendBulkEmailsDirect } from '@/lib/email/sender';
 import { riderPromotionalTemplate, EmailConfig } from '@/lib/email/templates';
+import { buildUnsubscribeUrl } from '@/lib/email/unsubscribe';
 
 const LOGO_URL = 'https://www.spinr.ca/logo.png';
 
@@ -66,6 +67,7 @@ export async function POST(request) {
             subject: subjectFor,
             fromAddress: buildPromoFrom(),
             replyTo: process.env.EMAIL_REPLY_TO_PROMOTIONS || undefined,
+            unsubscribeUrlFn: (recipient) => buildUnsubscribeUrl(recipient.email),
             htmlFn: (recipient) =>
                 riderPromotionalTemplate({
                     riderName: recipient.name || 'there',
@@ -75,6 +77,7 @@ export async function POST(request) {
                     maxRides: maxRides || null,
                     appUrl: appUrl?.trim() || '#',
                     logoUrl: LOGO_URL,
+                    unsubscribeUrl: buildUnsubscribeUrl(recipient.email),
                 }),
         });
 

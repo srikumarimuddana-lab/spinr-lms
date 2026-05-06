@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { sendBulkEmailsDirect } from '@/lib/email/sender';
-import { riderPromotionalTemplate } from '@/lib/email/templates';
+import { riderPromotionalTemplate, EmailConfig } from '@/lib/email/templates';
+
+// Derive promo sender from the existing verified domain — same domain, "Spinr" display name, promo@ local part
+function buildPromoFrom() {
+    if (process.env.EMAIL_FROM_PROMOTIONS) return process.env.EMAIL_FROM_PROMOTIONS;
+    // Extract domain from e.g. "Spinr Training <noreply@training.spinr.ca>"
+    const match = EmailConfig.from.match(/<[^@]+@([^>]+)>/);
+    const domain = match ? match[1] : null;
+    return domain ? `Spinr <promo@${domain}>` : EmailConfig.from;
+}
 
 export async function POST(request) {
     try {
@@ -53,9 +62,7 @@ export async function POST(request) {
         const result = await sendBulkEmailsDirect({
             recipients,
             subject: subjectFor,
-            // Optional: dedicated promotions sender (verified domain in Resend)
-            // Set EMAIL_FROM_PROMOTIONS in your env to use a different from address.
-            fromAddress: process.env.EMAIL_FROM_PROMOTIONS || undefined,
+            fromAddress: buildPromoFrom(),
             replyTo: process.env.EMAIL_REPLY_TO_PROMOTIONS || undefined,
             htmlFn: (recipient) =>
                 riderPromotionalTemplate({

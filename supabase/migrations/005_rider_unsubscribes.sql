@@ -22,4 +22,4 @@ CREATE POLICY "Service role full access"
     TO service_role
     USING (true)
     WITH CHECK (true);
--- Migration doen fors subscribe thing
+-- Migration doen fors subscribe thing  
